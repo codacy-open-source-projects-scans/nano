@@ -1,7 +1,7 @@
 /**************************************************************************
  *   rcfile.c  --  This file is part of GNU nano.                         *
  *                                                                        *
- *   Copyright (C) 2001-2011, 2013-2023 Free Software Foundation, Inc.    *
+ *   Copyright (C) 2001-2011, 2013-2024 Free Software Foundation, Inc.    *
  *   Copyright (C) 2014 Mike Frysinger                                    *
  *   Copyright (C) 2019 Brand Huntsman                                    *
  *   Copyright (C) 2014-2021 Benno Schulenberg                            *
@@ -1353,7 +1353,7 @@ static void check_vitals_mapped(void)
 
 	for (int v = 0; v < VITALS; v++) {
 		for (funcstruct *f = allfuncs; f != NULL; f = f->next) {
-			if (f->func == vitals[v] && f->menus & inmenus[v]) {
+			if (f->func == vitals[v] && (f->menus & inmenus[v])) {
 				if (first_sc_for(inmenus[v], f->func) == NULL) {
 					jot_error(N_("No key is bound to function '%s' in menu '%s'. "
 								" Exiting.\n"), f->tag, menu_to_name(inmenus[v]));
