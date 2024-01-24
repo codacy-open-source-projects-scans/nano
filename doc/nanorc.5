@@ -98,10 +98,12 @@ with \fBset backup\fR or \fB\-\-backup\fR or \fB\-B\fR.
 The uniquely numbered files are stored in the specified \fIdirectory\fR.
 .TP
 .B set boldtext
-Use bold instead of reverse video for the title bar, status bar, key combos,
-function tags, line numbers, and selected text.  This can be overridden by
-setting the options \fBtitlecolor\fP, \fBstatuscolor\fP, \fBkeycolor\fP,
-\fBfunctioncolor\fP, \fBnumbercolor\fP, and \fBselectedcolor\fP.
+Use bold instead of reverse video for the title bar, status bar,
+prompt bar, mini bar, key combos, function tags, line numbers,
+and selected text.  This can be overridden by setting the options
+\fBtitlecolor\fP, \fBstatuscolor\fP,
+\fBpromptcolor\fP, \fBminicolor\fP, \fBkeycolor\fP, \fBfunctioncolor\fP,
+\fBnumbercolor\fP, and/or \fBselectedcolor\fP.
 .TP
 .B set bookstyle
 When justifying, treat any line that starts with whitespace as the
@@ -189,7 +191,7 @@ The default value is "\fB(<[{)>]}\fP".
 .B set minibar
 Suppress the title bar and instead show information about
 the current buffer at the bottom of the screen, in the space
-for the status bar.  In this "minibar" the filename is shown
+for the status bar.  In this "mini bar" the filename is shown
 on the left, followed by an asterisk if the buffer has been modified.
 On the right are displayed the current line and column number, the
 code of the character under the cursor (in Unicode format: U+xxxx),
@@ -204,7 +206,7 @@ The line plus column numbers and the character code are displayed only when
 The state flags are displayed only when \fBset stateflags\fR is used.
 .TP
 .B set minicolor \fR[\fBbold,\fR][\fBitalic,\fR]\fIfgcolor\fB,\fIbgcolor\fR
-Use this color combination for the minibar.
+Use this color combination for the mini bar.
 (When this option is not specified, the colors of the title bar are used.)
 See \fBset titlecolor\fR for more details.
 .TP
@@ -257,7 +259,7 @@ See \fBset titlecolor\fR for more details.
 .BI "set punct """ characters """
 Set the characters treated as closing punctuation when justifying
 paragraphs.  This may not include blank characters.  Only the
-specfified closing punctuation, optionally followed by closing brackets
+specified closing punctuation, optionally followed by closing brackets
 (see \fBbrackets\fP), can end sentences.  The default value is "\fB!.?\fP".
 .TP
 .B set quickblank
