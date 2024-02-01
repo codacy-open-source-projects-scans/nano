@@ -245,6 +245,8 @@ keystruct *strtosc(const char *input)
 		s->func = do_replace;
 	else if (!strcmp(input, "cut"))
 		s->func = cut_text;
+	else if (!strcmp(input, "copy"))
+		s->func = copy_text;
 	else if (!strcmp(input, "paste"))
 		s->func = paste_text;
 #ifndef NANO_TINY
@@ -252,8 +254,6 @@ keystruct *strtosc(const char *input)
 		s->func = do_execute;
 	else if (!strcmp(input, "cutrestoffile"))
 		s->func = cut_till_eof;
-	else if (!strcmp(input, "copy"))
-		s->func = copy_text;
 	else if (!strcmp(input, "zap"))
 		s->func = zap_text;
 	else if (!strcmp(input, "mark"))
@@ -1332,11 +1332,13 @@ bool parse_syntax_commands(char *keyword, char *ptr)
 #endif
 	} else if (strcmp(keyword, "tabgives") == 0) {
 		pick_up_name("tabgives", ptr, &live_syntax->tabstring);
-	} else if (strcmp(keyword, "linter") == 0)
+	} else if (strcmp(keyword, "linter") == 0) {
 		pick_up_name("linter", ptr, &live_syntax->linter);
-	else if (strcmp(keyword, "formatter") == 0)
+		strip_leading_blanks_from(live_syntax->linter);
+	} else if (strcmp(keyword, "formatter") == 0) {
 		pick_up_name("formatter", ptr, &live_syntax->formatter);
-	else
+		strip_leading_blanks_from(live_syntax->formatter);
+	} else
 		return FALSE;
 
 	return TRUE;

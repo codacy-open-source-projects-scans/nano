@@ -660,6 +660,7 @@ void usage(void)
 	print_opt("-_", "--minibar", N_("Show a feedback bar at the bottom"));
 	print_opt("-0", "--zero", N_("Hide all bars, use whole terminal"));
 #endif
+	print_opt("-/", "--modernbindings", N_("Use better-known key bindings"));
 }
 
 /* Display the version number of this nano, a copyright notice, some contact
@@ -1644,9 +1645,9 @@ void process_a_keystroke(void)
 		give_a_hint = FALSE;
 
 	/* When not cutting or copying text, drop the cutbuffer the next time. */
-	if (function != cut_text) {
+	if (function != cut_text && function != copy_text) {
 #ifndef NANO_TINY
-		if (function != copy_text && function != zap_text)
+		if (function != zap_text)
 #endif
 			keep_cutbuffer = FALSE;
 	}
@@ -1778,6 +1779,7 @@ int main(int argc, char **argv)
 		{"nowrap", 0, NULL, 'w'},
 #endif
 		{"nohelp", 0, NULL, 'x'},
+		{"modernbindings", 0, NULL, '/'},
 #ifndef NANO_TINY
 		{"smarthome", 0, NULL, 'A'},
 		{"backup", 0, NULL, 'B'},
@@ -1851,9 +1853,11 @@ int main(int argc, char **argv)
 	/* If the executable's name starts with 'r', activate restricted mode. */
 	if (*(tail(argv[0])) == 'r')
 		SET(RESTRICTED);
+	else if (*(tail(argv[0])) == 'e')
+		SET(MODERN_BINDINGS);
 
 	while ((optchr = getopt_long(argc, argv, "ABC:DEFGHIJ:KLMNOPQ:RS$T:UVWX:Y:Z"
-				"abcdef:ghijklmno:pqr:s:tuvwxy!%_0", long_options, NULL)) != -1) {
+				"abcdef:ghijklmno:pqr:s:tuvwxy!%_0/", long_options, NULL)) != -1) {
 		switch (optchr) {
 #ifndef NANO_TINY
 			case 'A':
@@ -2102,6 +2106,9 @@ int main(int argc, char **argv)
 				SET(ZERO);
 				break;
 #endif
+			case '/':
+				SET(MODERN_BINDINGS);
+				break;
 			default:
 				printf(_("Type '%s -h' for a list of available options.\n"), argv[0]);
 				exit(1);
@@ -2208,9 +2215,7 @@ int main(int argc, char **argv)
 			free(alt_speller);
 			alt_speller = alt_speller_cmdline;
 		}
-		/* Strip leading whitespace from the speller command, if any. */
-		while (alt_speller && (*alt_speller == ' ' || *alt_speller == '\t'))
-			memmove(alt_speller, alt_speller + 1, strlen(alt_speller));
+		strip_leading_blanks_from(alt_speller);
 #endif
 
 		/* If an rcfile undid the default setting, copy it to the new flag. */
