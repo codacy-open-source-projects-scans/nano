@@ -1539,7 +1539,7 @@ char *get_verbatim_kbinput(WINDOW *frame, size_t *count)
 
 	/* If the byte is invalid in the current mode, discard it;
 	 * if it is an incomplete Unicode sequence, stuff it back. */
-	if (input != NULL) {
+	if (input && *count) {
 		if (*input >= 0x80 && *count == 1) {
 			put_back(*input);
 			*count = 999;
@@ -1584,9 +1584,9 @@ char *get_verbatim_kbinput(WINDOW *frame, size_t *count)
  * TRUE, releasing/clicking on a visible shortcut will put back the
  * keystroke associated with that shortcut.  If ncurses supports them,
  * we also handle presses of the fourth mouse button (upward rolls of
- * the mouse wheel) by putting back keystrokes to move up, and presses
+ * the mouse wheel) by putting back keystrokes to scroll up, and presses
  * of the fifth mouse button (downward rolls of the mouse wheel) by
- * putting back keystrokes to move down.  We also store the coordinates
+ * putting back keystrokes to scroll down.  We also store the coordinates
  * of a mouse event that needs further handling in mouse_x and mouse_y.
  * Return -1 on error, 0 if the mouse event needs to be handled, 1 if it's
  * been handled by putting back keystrokes, or 2 if it's been ignored. */
@@ -1684,11 +1684,11 @@ int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
 			wmouse_trafo(footwin, mouse_y, mouse_x, FALSE);
 
 		if (in_middle || (in_footer && *mouse_y == 0)) {
-			int keycode = (event.bstate & BUTTON4_PRESSED) ? KEY_UP : KEY_DOWN;
+			int keycode = (event.bstate & BUTTON4_PRESSED) ? ALT_UP : ALT_DOWN;
 
-			/* One roll of the mouse wheel should move three lines. */
-			for (int count = 3; count > 0; count--)
-				put_back(keycode);
+			/* One bump of the mouse wheel should scroll two lines. */
+			put_back(keycode);
+			put_back(keycode);
 
 			return 1;
 		} else
