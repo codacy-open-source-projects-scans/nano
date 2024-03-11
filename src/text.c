@@ -553,8 +553,8 @@ void do_undo(void)
 		 * and the nonewlines flag isn't set, do not re-add a newline that
 		 * wasn't actually deleted; just position the cursor. */
 		if ((u->xflags & WAS_BACKSPACE_AT_EOF) && !ISSET(NO_NEWLINES)) {
-			openfile->current = openfile->filebot;
-			openfile->current_x = 0;
+	        goto_line_posx(openfile->filebot->lineno, 0);
+			focusing = FALSE;
 			break;
 		}
 		line->data[u->tail_x] = '\0';
@@ -664,8 +664,8 @@ void do_undo(void)
 #ifdef ENABLE_COLOR
 	if (u->type <= REPLACE)
 		check_the_multis(openfile->current);
-	else if (u->type == INSERT)
-		perturbed = TRUE;
+	else if (u->type == INSERT || u->type == COUPLE_BEGIN)
+		recook = TRUE;
 #endif
 
 	/* When at the point where the buffer was last saved, unset "Modified". */
@@ -834,7 +834,7 @@ void do_redo(void)
 #ifdef ENABLE_COLOR
 	if (u->type <= REPLACE)
 		check_the_multis(openfile->current);
-	else if (u->type == INSERT)
+	else if (u->type == INSERT || u->type == COUPLE_END)
 		recook = TRUE;
 #endif
 
@@ -1687,6 +1687,12 @@ void rewrap_paragraph(linestruct **line, char *lead_string, size_t lead_len)
 		*line = (*line)->next;
 	}
 
+#ifdef ENABLE_COLOR
+	/* If the new paragraph exceeds the viewport, recalculate the multidata. */
+	if ((*line)->lineno >= editwinrows)
+		recook = TRUE;
+#endif
+
 	/* When possible, go to the line after the rewrapped paragraph. */
 	if ((*line)->next != NULL)
 		*line = (*line)->next;
@@ -2015,6 +2021,9 @@ void do_full_justify(void)
 {
 	justify_text(WHOLE_BUFFER);
 	ran_a_tool = TRUE;
+#ifdef ENABLE_COLOR
+	recook = TRUE;
+#endif
 }
 #endif /* ENABLE_JUSTIFY */
 

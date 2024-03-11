@@ -670,6 +670,10 @@ void shortcut_init(void)
 	const char *execute_gist = N_("Execute a function or an external command");
 	const char *pipe_gist =
 		N_("Pipe the current buffer (or marked region) to the command");
+#ifdef ENABLE_HISTORIES
+	const char *older_command_gist = N_("Recall the previous command");
+	const char *newer_command_gist = N_("Recall the next command");
+#endif
 	const char *convert_gist = N_("Do not convert from DOS/Mac format");
 #endif
 #ifdef ENABLE_MULTIBUFFER
@@ -841,6 +845,12 @@ void shortcut_init(void)
 			N_("Older"), WHENHELP(older_gist), TOGETHER);
 	add_to_funcs(get_newer_item, MWHEREIS|MREPLACE|MREPLACEWITH|MWHEREISFILE,
 			N_("Newer"), WHENHELP(newer_gist), BLANKAFTER);
+#ifndef NANO_TINY
+	add_to_funcs(get_older_item, MEXECUTE,
+			N_("Older"), WHENHELP(older_command_gist), TOGETHER);
+	add_to_funcs(get_newer_item, MEXECUTE,
+			N_("Newer"), WHENHELP(newer_command_gist), BLANKAFTER);
+#endif
 #endif
 
 #ifdef ENABLE_BROWSER
@@ -1178,6 +1188,8 @@ void shortcut_init(void)
 	add_to_sclist(MMOST|MBROWSER, "Enter", KEY_ENTER, do_enter, 0);
 	add_to_sclist(MMOST, "^I", '\t', do_tab, 0);
 	add_to_sclist(MMOST, "Tab", '\t', do_tab, 0);
+	add_to_sclist(MMAIN|MBROWSER|MHELP, "^B", 0, do_search_backward, 0);
+	add_to_sclist(MMAIN|MBROWSER|MHELP, "^F", 0, do_search_forward, 0);
 	if (ISSET(MODERN_BINDINGS)) {
 		add_to_sclist((MMOST|MBROWSER) & ~MFINDINHELP, help_key, 0, do_help, 0);
 		add_to_sclist(MHELP, help_key, 0, do_exit, 0);
@@ -1222,8 +1234,6 @@ void shortcut_init(void)
 	add_to_sclist(MMOST, "Sh-Del", SHIFT_DELETE, do_backspace, 0);
 	add_to_sclist(MMOST, "Del", KEY_DC, do_delete, 0);
 	add_to_sclist(MMAIN, "Ins", KEY_IC, do_insertfile, 0);
-	add_to_sclist(MMAIN|MBROWSER|MHELP, "^B", 0, do_search_backward, 0);
-	add_to_sclist(MMAIN|MBROWSER|MHELP, "^F", 0, do_search_forward, 0);
 	add_to_sclist(MMAIN, "^\\", 0, do_replace, 0);
 	add_to_sclist(MMAIN, "M-R", 0, do_replace, 0);
 	add_to_sclist(MMOST, "^K", 0, cut_text, 0);
@@ -1399,10 +1409,7 @@ void shortcut_init(void)
 #if !defined(NANO_TINY) || defined(ENABLE_HELP)
 	add_to_sclist(MMAIN, "^L", 0, do_center, 0);
 #endif
-	if (!ISSET(PRESERVE))
-		add_to_sclist(MMOST|MBROWSER|MHELP|MYESNO, "^L", 0, full_refresh, 0);
-	else
-		add_to_sclist(MMOST|MBROWSER|MYESNO, "^L", 0, full_refresh, 0);
+	add_to_sclist(MMOST|MBROWSER|MHELP|MYESNO, "^L", 0, full_refresh, 0);
 
 #ifndef NANO_TINY
 	/* Group of "Appearance" toggles. */

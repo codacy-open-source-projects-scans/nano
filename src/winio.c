@@ -290,10 +290,6 @@ void read_keys_from(WINDOW *frame)
 		napms(20);
 
 	while (TRUE) {
-#ifndef NANO_TINY
-		if (recording)
-			add_to_macrobuffer(input);
-#endif
 		input = wgetch(frame);
 
 		/* If there aren't any more characters, stop reading. */
@@ -1372,6 +1368,11 @@ int get_kbinput(WINDOW *frame, bool showcursor)
 	/* Extract one keystroke from the input stream. */
 	while (kbinput == ERR)
 		kbinput = parse_kbinput(frame);
+
+#ifndef NANO_TINY
+	if (recording)
+		add_to_macrobuffer(kbinput);
+#endif
 
 	/* If we read from the edit window, blank the status bar if needed. */
 	if (frame == midwin)
@@ -3386,10 +3387,17 @@ void edit_refresh(void)
 	linestruct *line;
 	int row = 0;
 
+	/* If the current line is out of view, get it back on screen. */
+	if (current_is_offscreen())
+		adjust_viewport((focusing || ISSET(JUMPY_SCROLLING)) ? CENTERING : FLOWING);
+
 #ifdef ENABLE_COLOR
 	/* When needed and useful, initialize the colors for the current syntax. */
 	if (openfile->syntax && !have_palette && !ISSET(NO_SYNTAX) && has_colors())
 		prepare_palette();
+
+	/* When the line above the viewport does not have multidata, recalculate all. */
+	recook |= ISSET(SOFTWRAP) && openfile->edittop->prev && !openfile->edittop->prev->multidata;
 
 	if (recook) {
 		precalc_multicolorinfo();
@@ -3397,10 +3405,6 @@ void edit_refresh(void)
 		recook = FALSE;
 	}
 #endif
-
-	/* If the current line is out of view, get it back on screen. */
-	if (current_is_offscreen())
-		adjust_viewport((focusing || ISSET(JUMPY_SCROLLING)) ? CENTERING : FLOWING);
 
 #ifndef NANO_TINY
 	if (thebar)
