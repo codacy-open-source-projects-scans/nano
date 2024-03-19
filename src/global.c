@@ -132,8 +132,8 @@ int editwincols = -1;
 		/* The number of usable columns in the edit window: COLS - margin. */
 int margin = 0;
 		/* The amount of space reserved at the left for line numbers. */
-int thebar = 0;
-		/* Becomes 1 when a scrollbar is shown. */
+int sidebar = 0;
+		/* Becomes 1 when the indicator "scroll bar" must be shown. */
 #ifndef NANO_TINY
 int *bardata = NULL;
 		/* An array of characters that together depict the scrollbar. */
@@ -1080,6 +1080,7 @@ void shortcut_init(void)
 #endif
 #ifdef ENABLE_SPELLER
 	add_to_funcs(do_spell, MEXECUTE,
+			/* TRANSLATORS: Try to keep the next four strings at most 12 characters. */
 			N_("Spell Check"), WHENHELP(spell_gist), TOGETHER);
 #endif
 #ifdef ENABLE_LINTER

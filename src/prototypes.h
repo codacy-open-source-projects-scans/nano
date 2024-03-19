@@ -93,7 +93,7 @@ extern WINDOW *footwin;
 extern int editwinrows;
 extern int editwincols;
 extern int margin;
-extern int thebar;
+extern int sidebar;
 #ifndef NANO_TINY
 extern int *bardata;
 extern ssize_t stripe_column;
@@ -602,7 +602,7 @@ void blank_edit(void);
 void blank_statusbar(void);
 void wipe_statusbar(void);
 void blank_bottombars(void);
-void check_statusblank(void);
+void blank_it_when_expired(void);
 void set_blankdelay_to_one(void);
 char *display_string(const char *buf, size_t column, size_t span,
 						bool isdata, bool isprompt);

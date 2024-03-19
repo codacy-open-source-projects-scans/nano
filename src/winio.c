@@ -60,7 +60,7 @@ static bool reveal_cursor = FALSE;
 		/* Whether the cursor should be shown when waiting for input. */
 static bool linger_after_escape = FALSE;
 		/* Whether to give ncurses some time to get the next code. */
-static int statusblank = 0;
+static int countdown = 0;
 		/* The number of keystrokes left before we blank the status bar. */
 static size_t from_x = 0;
 		/* From where in the relevant line the current row is drawn. */
@@ -1374,9 +1374,9 @@ int get_kbinput(WINDOW *frame, bool showcursor)
 		add_to_macrobuffer(kbinput);
 #endif
 
-	/* If we read from the edit window, blank the status bar if needed. */
+	/* If we read from the edit window, blank the status bar when it's time. */
 	if (frame == midwin)
-		check_statusblank();
+		blank_it_when_expired();
 
 	return kbinput;
 }
@@ -1751,12 +1751,12 @@ void blank_bottombars(void)
 }
 
 /* When some number of keystrokes has been reached, wipe the status bar. */
-void check_statusblank(void)
+void blank_it_when_expired(void)
 {
-	if (statusblank == 0)
+	if (countdown == 0)
 		return;
 
-	if (--statusblank == 0)
+	if (--countdown == 0)
 		wipe_statusbar();
 
 	/* When windows overlap, make sure to show the edit window now. */
@@ -1769,7 +1769,7 @@ void check_statusblank(void)
 /* Ensure that the status bar will be wiped upon the next keystroke. */
 void set_blankdelay_to_one(void)
 {
-	statusblank = 1;
+	countdown = 1;
 }
 
 /* Convert text into a string that can be displayed on screen.  The caller
@@ -2401,7 +2401,7 @@ void statusline(message_type importance, const char *msg, ...)
 	free(message);
 
 	/* When requested, wipe the status bar after just one keystroke. */
-	statusblank = (ISSET(QUICK_BLANK) ? 1 : 20);
+	countdown = (ISSET(QUICK_BLANK) ? 1 : 20);
 }
 
 /* Display a normal message on the status bar, quietly. */
@@ -2534,6 +2534,10 @@ void place_the_cursor(void)
 		statusline(ALERT, "Misplaced cursor -- please report a bug");
 #endif
 
+#ifdef _CURSES_H_
+	wnoutrefresh(midwin);  /* Only needed for NetBSD curses. */
+#endif
+
 	openfile->current_y = row;
 }
 
@@ -2581,7 +2585,7 @@ void draw_row(int row, const char *converted, linestruct *line, size_t from_col)
 		wclrtoeol(midwin);
 
 #ifndef NANO_TINY
-	if (thebar)
+	if (sidebar)
 		mvwaddch(midwin, row, COLS - 1, bardata[row]);
 #endif
 
@@ -2859,7 +2863,7 @@ int update_line(linestruct *line, size_t index)
 	}
 	if (has_more) {
 		wattron(midwin, hilite_attribute);
-		mvwaddch(midwin, row, COLS - 1 - thebar, '>');
+		mvwaddch(midwin, row, COLS - 1 - sidebar, '>');
 		wattroff(midwin, hilite_attribute);
 	}
 
@@ -3044,7 +3048,7 @@ bool less_than_a_screenful(size_t was_lineno, size_t was_leftedge)
 }
 
 #ifndef NANO_TINY
-/* Draw a scroll bar on the righthand side of the screen. */
+/* Draw a "scroll bar" on the righthand side of the edit window. */
 void draw_scrollbar(void)
 {
 	int fromline = openfile->edittop->lineno - 1;
@@ -3066,7 +3070,7 @@ void draw_scrollbar(void)
 	int lowest = (fromline * editwinrows) / totallines;
 	int highest = lowest + (editwinrows * coveredlines) / totallines;
 
-	if (editwinrows > totallines)
+	if (editwinrows > totallines && !ISSET(SOFTWRAP))
 		highest = editwinrows;
 
 	for (int row = 0; row < editwinrows; row++) {
@@ -3110,7 +3114,7 @@ void edit_scroll(bool direction)
 		go_forward_chunks(editwinrows - nrows, &line, &leftedge);
 
 #ifndef NANO_TINY
-	if (thebar)
+	if (sidebar)
 		draw_scrollbar();
 
 	if (ISSET(SOFTWRAP)) {
@@ -3407,7 +3411,7 @@ void edit_refresh(void)
 #endif
 
 #ifndef NANO_TINY
-	if (thebar)
+	if (sidebar)
 		draw_scrollbar();
 #endif
 
@@ -3420,17 +3424,14 @@ void edit_refresh(void)
 	line = openfile->edittop;
 
 	while (row < editwinrows && line != NULL) {
-		if (line == openfile->current)
-			row += update_line(line, openfile->current_x);
-		else
-			row += update_line(line, 0);
+		row += update_line(line, (line == openfile->current) ? openfile->current_x : 0);
 		line = line->next;
 	}
 
 	while (row < editwinrows) {
 		blank_row(midwin, row);
 #ifndef NANO_TINY
-		if (thebar)
+		if (sidebar)
 			mvwaddch(midwin, row, COLS - 1, bardata[row]);
 #endif
 		row++;
@@ -3441,6 +3442,7 @@ void edit_refresh(void)
 #endif
 
 	place_the_cursor();
+
 	wnoutrefresh(midwin);
 
 	refresh_needed = FALSE;
@@ -3549,7 +3551,7 @@ void spotlight(size_t from_col, size_t to_col)
 	wattron(midwin, interface_color_pair[SPOTLIGHTED]);
 	waddnstr(midwin, word, actual_x(word, to_col));
 	if (overshoots)
-		mvwaddch(midwin, openfile->current_y, COLS - 1 - thebar, '>');
+		mvwaddch(midwin, openfile->current_y, COLS - 1 - sidebar, '>');
 	wattroff(midwin, interface_color_pair[SPOTLIGHTED]);
 
 	free(word);
