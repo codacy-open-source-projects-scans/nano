@@ -1084,40 +1084,40 @@ short color_to_short(const char *colorname, bool *vivid, bool *thick)
 
 /* Parse the color name (or pair of color names) in the given string.
  * Return FALSE when any color name is invalid; otherwise return TRUE. */
-bool parse_combination(char *combostr, short *fg, short *bg, int *attributes)
+bool parse_combination(char *combotext, short *fg, short *bg, int *attributes)
 {
 	bool vivid, thick;
 	char *comma;
 
 	*attributes = A_NORMAL;
 
-	if (strncmp(combostr, "bold", 4) == 0) {
+	if (strncmp(combotext, "bold", 4) == 0) {
 		*attributes |= A_BOLD;
-		if (combostr[4] != ',') {
+		if (combotext[4] != ',') {
 			jot_error(N_("An attribute requires a subsequent comma"));
 			return FALSE;
 		}
-		combostr += 5;
+		combotext += 5;
 	}
 
-	if (strncmp(combostr, "italic", 6) == 0) {
+	if (strncmp(combotext, "italic", 6) == 0) {
 #ifdef A_ITALIC
 		*attributes |= A_ITALIC;
 #endif
-		if (combostr[6] != ',') {
+		if (combotext[6] != ',') {
 			jot_error(N_("An attribute requires a subsequent comma"));
 			return FALSE;
 		}
-		combostr += 7;
+		combotext += 7;
 	}
 
-	comma = strchr(combostr, ',');
+	comma = strchr(combotext, ',');
 
 	if (comma)
 		*comma = '\0';
 
-	if (!comma || comma > combostr) {
-		*fg = color_to_short(combostr, &vivid, &thick);
+	if (!comma || comma > combotext) {
+		*fg = color_to_short(combotext, &vivid, &thick);
 		if (*fg == BAD_COLOR)
 			return FALSE;
 		if (vivid && !thick && COLORS > 8)
@@ -1229,16 +1229,16 @@ void parse_rule(char *ptr, int rex_flags)
 	}
 }
 
-/* Parse the argument of an interface color option. */
-colortype *parse_interface_color(char *combostr)
+/* Set the colors for the given interface element to the given combination. */
+void set_interface_color(int element, char *combotext)
 {
 	colortype *trio = nmalloc(sizeof(colortype));
 
-	if (!parse_combination(combostr, &trio->fg, &trio->bg, &trio->attributes)) {
-		free(trio);
-		return NULL;
+	if (parse_combination(combotext, &trio->fg, &trio->bg, &trio->attributes)) {
+		free(color_combo[element]);
+		color_combo[element] = trio;
 	} else
-		return trio;
+		free(trio);
 }
 
 /* Read regex strings enclosed in double quotes from the line pointed at
@@ -1583,29 +1583,29 @@ void parse_rcfile(FILE *rcstream, bool just_syntax, bool intros_only)
 #endif
 #ifdef ENABLE_COLOR
 		if (strcmp(option, "titlecolor") == 0)
-			color_combo[TITLE_BAR] = parse_interface_color(argument);
+			set_interface_color(TITLE_BAR, argument);
 		else if (strcmp(option, "numbercolor") == 0)
-			color_combo[LINE_NUMBER] = parse_interface_color(argument);
+			set_interface_color(LINE_NUMBER, argument);
 		else if (strcmp(option, "stripecolor") == 0)
-			color_combo[GUIDE_STRIPE] = parse_interface_color(argument);
+			set_interface_color(GUIDE_STRIPE, argument);
 		else if (strcmp(option, "scrollercolor") == 0)
-			color_combo[SCROLL_BAR] = parse_interface_color(argument);
+			set_interface_color(SCROLL_BAR, argument);
 		else if (strcmp(option, "selectedcolor") == 0)
-			color_combo[SELECTED_TEXT] = parse_interface_color(argument);
+			set_interface_color(SELECTED_TEXT, argument);
 		else if (strcmp(option, "spotlightcolor") == 0)
-			color_combo[SPOTLIGHTED] = parse_interface_color(argument);
+			set_interface_color(SPOTLIGHTED, argument);
 		else if (strcmp(option, "minicolor") == 0)
-			color_combo[MINI_INFOBAR] = parse_interface_color(argument);
+			set_interface_color(MINI_INFOBAR, argument);
 		else if (strcmp(option, "promptcolor") == 0)
-			color_combo[PROMPT_BAR] = parse_interface_color(argument);
+			set_interface_color(PROMPT_BAR, argument);
 		else if (strcmp(option, "statuscolor") == 0)
-			color_combo[STATUS_BAR] = parse_interface_color(argument);
+			set_interface_color(STATUS_BAR, argument);
 		else if (strcmp(option, "errorcolor") == 0)
-			color_combo[ERROR_MESSAGE] = parse_interface_color(argument);
+			set_interface_color(ERROR_MESSAGE, argument);
 		else if (strcmp(option, "keycolor") == 0)
-			color_combo[KEY_COMBO] = parse_interface_color(argument);
+			set_interface_color(KEY_COMBO, argument);
 		else if (strcmp(option, "functioncolor") == 0)
-			color_combo[FUNCTION_TAG] = parse_interface_color(argument);
+			set_interface_color(FUNCTION_TAG, argument);
 		else
 #endif
 #ifdef ENABLE_OPERATINGDIR

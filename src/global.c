@@ -388,6 +388,14 @@ int keycode_from_string(const char *keystring)
 		return -1;
 }
 
+#if defined(ENABLE_EXTRA) && defined(NCURSES_VERSION_PATCH)
+void show_curses_version(void)
+{
+	statusline(INFO, "ncurses-%i.%i, patch %li", NCURSES_VERSION_MAJOR,
+							NCURSES_VERSION_MINOR, NCURSES_VERSION_PATCH);
+}
+#endif
+
 /* Add a key combo to the linked list of shortcuts. */
 void add_to_sclist(int menus, const char *scstring, const int keycode,
 						void (*function)(void), int toggle)
@@ -779,12 +787,12 @@ void shortcut_init(void)
 
 #ifdef NANO_TINY
 	add_to_funcs(do_search_backward, MHELP,
-			N_("Where Was"), WHENHELP(wherewas_gist), TOGETHER);
+			"Where Was", WHENHELP(wherewas_gist), TOGETHER);
 
 	add_to_funcs(do_findprevious, MMAIN|MHELP,
-			N_("Previous"), WHENHELP(findprev_gist), TOGETHER);
+			"Previous", WHENHELP(findprev_gist), TOGETHER);
 	add_to_funcs(do_findnext, MMAIN|MHELP,
-			N_("Next"), WHENHELP(findnext_gist), BLANKAFTER);
+			"Next", WHENHELP(findnext_gist), BLANKAFTER);
 #endif
 
 	add_to_funcs(cut_text, MMAIN,
@@ -817,7 +825,7 @@ void shortcut_init(void)
 
 #ifndef NANO_TINY
 	add_to_funcs(do_undo, MMAIN,
-		/* TRANSLATORS: Try to keep the next ten strings at most 12 characters. */
+			/* TRANSLATORS: Try to keep the next ten strings at most 12 characters. */
 			N_("Undo"), WHENHELP(undo_gist), TOGETHER);
 	add_to_funcs(do_redo, MMAIN,
 			N_("Redo"), WHENHELP(redo_gist), BLANKAFTER);
@@ -1002,7 +1010,7 @@ void shortcut_init(void)
 
 #ifdef NANO_TINY
 	add_to_funcs(do_search_backward, MMAIN,
-			N_("Where Was"), WHENHELP(wherewas_gist), BLANKAFTER);
+			"Where Was", WHENHELP(wherewas_gist), BLANKAFTER);
 #else
 	add_to_funcs(do_indent, MMAIN,
 			N_("Indent"), WHENHELP(indent_gist), TOGETHER);
@@ -1308,6 +1316,8 @@ void shortcut_init(void)
 	add_to_sclist(MMAIN, "M-Ins", ALT_INSERT, put_or_lift_anchor, 0);
 	add_to_sclist(MMAIN, "M-PgUp", ALT_PAGEUP, to_prev_anchor, 0);
 	add_to_sclist(MMAIN, "M-PgDn", ALT_PAGEDOWN, to_next_anchor, 0);
+	add_to_sclist(MMAIN, "M-\"", 0, put_or_lift_anchor, 0);
+	add_to_sclist(MMAIN, "M-'", 0, to_next_anchor, 0);
 #endif
 #ifdef ENABLE_WORDCOMPLETION
 	add_to_sclist(MMAIN, "^]", 0, complete_a_word, 0);
@@ -1539,6 +1549,9 @@ void shortcut_init(void)
 	add_to_sclist(MMAIN, "F11", KEY_F(11), report_cursor_position, 0);
 #ifdef ENABLE_SPELLER
 	add_to_sclist(MMAIN, "F12", KEY_F(12), do_spell, 0);
+#endif
+#if defined(ENABLE_EXTRA) && defined(NCURSES_VERSION_PATCH)
+	add_to_sclist(MMAIN, "M-&", 0, show_curses_version, 0);
 #endif
 #ifndef NANO_TINY
 	add_to_sclist((MMOST & ~MMAIN) | MYESNO, "", KEY_CANCEL, do_cancel, 0);

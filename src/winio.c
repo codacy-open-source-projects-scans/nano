@@ -91,7 +91,8 @@ void add_to_macrobuffer(int code)
 /* Remove the last key code plus any leading Esc codes from macro buffer. */
 void snip_last_keystroke(void)
 {
-	macro_length--;
+	if (macro_length > 0)
+		macro_length--;
 	while (macro_length > 0 && macro_buffer[macro_length - 1] == '\x1b')
 		macro_length--;
 }
@@ -124,7 +125,7 @@ void run_macro(void)
 	}
 
 	if (macro_length == 0) {
-		statusline(REMARK, _("Macro is empty"));
+		statusline(AHEM, _("Macro is empty"));
 		return;
 	}
 
@@ -290,6 +291,10 @@ void read_keys_from(WINDOW *frame)
 		napms(20);
 
 	while (TRUE) {
+#ifndef NANO_TINY
+		if (recording)
+			add_to_macrobuffer(input);
+#endif
 		input = wgetch(frame);
 
 		/* If there aren't any more characters, stop reading. */
@@ -1368,11 +1373,6 @@ int get_kbinput(WINDOW *frame, bool showcursor)
 	/* Extract one keystroke from the input stream. */
 	while (kbinput == ERR)
 		kbinput = parse_kbinput(frame);
-
-#ifndef NANO_TINY
-	if (recording)
-		add_to_macrobuffer(kbinput);
-#endif
 
 	/* If we read from the edit window, blank the status bar when it's time. */
 	if (frame == midwin)
