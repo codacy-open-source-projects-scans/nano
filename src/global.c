@@ -104,7 +104,7 @@ int shiftleft, shiftright, shiftup, shiftdown;
 int shiftcontrolleft, shiftcontrolright, shiftcontrolup, shiftcontroldown;
 int shiftcontrolhome, shiftcontrolend;
 int altleft, altright, altup, altdown;
-int altpageup, altpagedown;
+int althome, altend, altpageup, altpagedown;
 int altinsert, altdelete;
 int shiftaltleft, shiftaltright, shiftaltup, shiftaltdown;
 #endif
@@ -603,6 +603,10 @@ void shortcut_init(void)
 	const char *paraend_gist =
 		N_("Go just beyond end of paragraph; then of next paragraph");
 #endif
+#ifndef NANO_TINY
+	const char *toprow_gist = N_("Go to first row in the viewport");
+	const char *bottomrow_gist = N_("Go to last row in the viewport");
+#endif
 	const char *prevpage_gist = N_("Go one screenful up");
 	const char *nextpage_gist = N_("Go one screenful down");
 	const char *firstline_gist = N_("Go to the first line of the file");
@@ -946,6 +950,13 @@ void shortcut_init(void)
 			N_("Begin of Paragr."), WHENHELP(parabegin_gist), TOGETHER);
 	add_to_funcs(to_para_end, MMAIN|MGOTOLINE,
 			N_("End of Paragraph"), WHENHELP(paraend_gist), BLANKAFTER);
+#endif
+
+#ifndef NANO_TINY
+	add_to_funcs(to_top_row, MMAIN,
+			N_("Top Row"), WHENHELP(toprow_gist), TOGETHER);
+	add_to_funcs(to_bottom_row, MMAIN,
+			N_("Bottom Row"), WHENHELP(bottomrow_gist), BLANKAFTER);
 #endif
 
 	add_to_funcs(do_page_up, MMAIN|MHELP,
@@ -1314,6 +1325,8 @@ void shortcut_init(void)
 	add_to_sclist(MMAIN, "^Del", CONTROL_DELETE, chop_next_word, 0);
 	add_to_sclist(MMAIN, "M-Del", ALT_DELETE, zap_text, 0);
 	add_to_sclist(MMAIN, "M-Ins", ALT_INSERT, put_or_lift_anchor, 0);
+	add_to_sclist(MMAIN, "M-Home", ALT_HOME, to_top_row, 0);
+	add_to_sclist(MMAIN, "M-End", ALT_END, to_bottom_row, 0);
 	add_to_sclist(MMAIN, "M-PgUp", ALT_PAGEUP, to_prev_anchor, 0);
 	add_to_sclist(MMAIN, "M-PgDn", ALT_PAGEDOWN, to_next_anchor, 0);
 	add_to_sclist(MMAIN, "M-\"", 0, put_or_lift_anchor, 0);

@@ -195,6 +195,8 @@
 #define ALT_RIGHT     0x422
 #define ALT_UP        0x423
 #define ALT_DOWN      0x424
+#define ALT_HOME      0x425
+#define ALT_END       0x426
 #define ALT_PAGEUP    0x427
 #define ALT_PAGEDOWN  0x428
 #define ALT_INSERT    0x42C
@@ -444,7 +446,7 @@ typedef struct syntaxtype {
 #endif
 	colortype *color;
 		/* The colors and their regexes used in this syntax. */
-	short nmultis;
+	short multiscore;
 		/* How many multiline regex strings this syntax has. */
 	struct syntaxtype *next;
 		/* Next syntax. */
@@ -559,8 +561,8 @@ typedef struct openfilestruct {
 		/* The file's x-coordinate position. */
 	size_t placewewant;
 		/* The file's x position we would like. */
-	ssize_t current_y;
-		/* The file's y-coordinate position. */
+	ssize_t cursor_row;
+		/* The row in the edit window that the cursor is on. */
 	struct stat *statinfo;
 		/* The file's stat information from when it was opened or last saved. */
 #ifdef ENABLE_WRAPPING

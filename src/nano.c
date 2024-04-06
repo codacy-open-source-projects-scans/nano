@@ -1334,13 +1334,11 @@ int do_mouse(void)
 
 	/* If the click was in the edit window, put the cursor in that spot. */
 	if (wmouse_trafo(midwin, &click_row, &click_col, FALSE)) {
-		linestruct *current_save = openfile->current;
-		ssize_t row_count = click_row - openfile->current_y;
+		linestruct *was_current = openfile->current;
+		ssize_t row_count = click_row - openfile->cursor_row;
 		size_t leftedge;
 #ifndef NANO_TINY
-		size_t current_x_save = openfile->current_x;
-		bool sameline = (click_row == openfile->current_y);
-			/* Whether the click was on the row where the cursor is. */
+		size_t was_x = openfile->current_x;
 
 		if (ISSET(SOFTWRAP))
 			leftedge = leftedge_for(xplustabs(), openfile->current);
@@ -1358,9 +1356,8 @@ int do_mouse(void)
 								actual_last_column(leftedge, click_col));
 
 #ifndef NANO_TINY
-		/* Clicking where the cursor is toggles the mark, as does clicking
-		 * beyond the line length with the cursor at the end of the line. */
-		if (sameline && openfile->current_x == current_x_save) {
+		/* Clicking there where the cursor is toggles the mark. */
+		if (row_count == 0 && openfile->current_x == was_x) {
 			do_mark();
 			if (ISSET(STATEFLAGS))
 				titlebar(NULL);
@@ -1369,7 +1366,7 @@ int do_mouse(void)
 			/* The cursor moved; clean the cutbuffer on the next cut. */
 			keep_cutbuffer = FALSE;
 
-		edit_redraw(current_save, CENTERING);
+		edit_redraw(was_current, CENTERING);
 	}
 
 	/* No more handling is needed. */
@@ -1468,7 +1465,7 @@ void inject(char *burst, size_t count)
 	size_t old_amount = 0;
 
 	if (ISSET(SOFTWRAP)) {
-		if (openfile->current_y == editwinrows - 1)
+		if (openfile->cursor_row == editwinrows - 1)
 			original_row = chunk_for(xplustabs(), thisline);
 		old_amount = extra_chunks_in(thisline);
 	}
@@ -1496,10 +1493,6 @@ void inject(char *burst, size_t count)
 	strncpy(thisline->data + openfile->current_x, burst, count);
 
 #ifndef NANO_TINY
-	/* When the mark is to the right of the cursor, compensate its position. */
-	if (thisline == openfile->mark && openfile->current_x < openfile->mark_x)
-		openfile->mark_x += count;
-
 	/* When the cursor is on the top row and not on the first chunk
 	 * of a line, adding text there might change the preceding chunk
 	 * and thus require an adjustment of firstcolumn. */
@@ -1507,22 +1500,28 @@ void inject(char *burst, size_t count)
 		ensure_firstcolumn_is_aligned();
 		refresh_needed = TRUE;
 	}
+
+	/* When the mark is to the right of the cursor, compensate its position. */
+	if (thisline == openfile->mark && openfile->current_x < openfile->mark_x)
+		openfile->mark_x += count;
 #endif
-	/* If text was added to the magic line, create a new magic line. */
-	if (thisline == openfile->filebot && !ISSET(NO_NEWLINES)) {
-		new_magicline();
-#ifdef ENABLE_COLOR
-		if (margin || (openfile->syntax && openfile->syntax->nmultis))
-#else
-		if (margin)
-#endif
-			update_line(thisline->next, 0);
-	}
 
 	openfile->current_x += count;
 
 	openfile->totsize += mbstrlen(burst);
 	set_modified();
+
+	/* If text was added to the magic line, create a new magic line. */
+	if (thisline == openfile->filebot && !ISSET(NO_NEWLINES)) {
+		new_magicline();
+#ifdef ENABLE_COLOR
+		if (margin || (openfile->syntax && openfile->syntax->multiscore))
+#else
+		if (margin)
+#endif
+			if (openfile->cursor_row < editwinrows - 1)
+				update_line(thisline->next, 0);
+	}
 
 #ifndef NANO_TINY
 	update_undo(ADD);
@@ -1533,19 +1532,19 @@ void inject(char *burst, size_t count)
 		do_wrap();
 #endif
 
+	openfile->placewewant = xplustabs();
+
 #ifndef NANO_TINY
 	/* When softwrapping and the number of chunks in the current line changed,
 	 * or we were on the last row of the edit window and moved to a new chunk,
 	 * we need a full refresh. */
 	if (ISSET(SOFTWRAP) && (extra_chunks_in(openfile->current) != old_amount ||
-					(openfile->current_y == editwinrows - 1 &&
-					chunk_for(xplustabs(), openfile->current) > original_row))) {
+					(openfile->cursor_row == editwinrows - 1 &&
+					chunk_for(openfile->placewewant, openfile->current) > original_row))) {
 		refresh_needed = TRUE;
 		focusing = FALSE;
 	}
 #endif
-
-	openfile->placewewant = xplustabs();
 
 #ifdef ENABLE_COLOR
 	if (!refresh_needed)
@@ -2433,6 +2432,8 @@ int main(int argc, char **argv)
 	altup = get_keycode("kUP3", ALT_UP);
 	altdown = get_keycode("kDN3", ALT_DOWN);
 
+	althome = get_keycode("kHOM3", ALT_HOME);
+	altend = get_keycode("kEND3", ALT_END);
 	altpageup = get_keycode("kPRV3", ALT_PAGEUP);
 	altpagedown = get_keycode("kNXT3", ALT_PAGEDOWN);
 	altinsert = get_keycode("kIC3", ALT_INSERT);
@@ -2638,7 +2639,7 @@ int main(int argc, char **argv)
 		/* In barless mode, either redraw a relevant status message,
 		 * or overwrite a minor, redundant one. */
 		if (ISSET(ZERO) && lastmessage > HUSH) {
-			if (openfile->current_y == editwinrows - 1 && LINES > 1) {
+			if (openfile->cursor_row == editwinrows - 1 && LINES > 1) {
 				edit_scroll(FORWARD);
 				wnoutrefresh(midwin);
 			}

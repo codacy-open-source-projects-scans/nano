@@ -1173,6 +1173,10 @@ int parse_kbinput(WINDOW *frame)
 		return ALT_UP;
 	else if (keycode == altdown)
 		return ALT_DOWN;
+	else if (keycode == althome)
+		return ALT_HOME;
+	else if (keycode == altend)
+		return ALT_END;
 	else if (keycode == altpageup)
 		return ALT_PAGEUP;
 	else if (keycode == altpagedown)
@@ -1216,11 +1220,13 @@ int parse_kbinput(WINDOW *frame)
 			if (!meta_key)
 				shift_held = TRUE;
 		}
-		/* Is Alt being held? */
+		/* Is only Alt being held? */
 		if (modifiers == 0x08) {
 			switch (keycode) {
 				case KEY_UP:    return ALT_UP;
 				case KEY_DOWN:  return ALT_DOWN;
+				case KEY_HOME:  return ALT_HOME;
+				case KEY_END:   return ALT_END;
 				case KEY_PPAGE: return ALT_PAGEUP;
 				case KEY_NPAGE: return ALT_PAGEDOWN;
 				case KEY_DC:    return ALT_DELETE;
@@ -2497,8 +2503,8 @@ void bottombars(int menu)
 	wrefresh(footwin);
 }
 
-/* Redetermine current_y from the position of current relative to edittop,
- * and put the cursor in the edit window at (current_y, "current_x"). */
+/* Redetermine `cursor_row` from the position of current relative to edittop,
+ * and put the cursor in the edit window at (cursor_row, "current_x"). */
 void place_the_cursor(void)
 {
 	ssize_t row = 0;
@@ -2538,7 +2544,7 @@ void place_the_cursor(void)
 	wnoutrefresh(midwin);  /* Only needed for NetBSD curses. */
 #endif
 
-	openfile->current_y = row;
+	openfile->cursor_row = row;
 }
 
 /* The number of bytes after which to stop painting, to avoid major slowdowns. */
@@ -2595,8 +2601,8 @@ void draw_row(int row, const char *converted, linestruct *line, size_t from_col)
 		const colortype *varnish = openfile->syntax->color;
 
 		/* If there are multiline regexes, make sure this line has a cache. */
-		if (openfile->syntax->nmultis > 0 && line->multidata == NULL)
-			line->multidata = nmalloc(openfile->syntax->nmultis * sizeof(short));
+		if (openfile->syntax->multiscore > 0 && line->multidata == NULL)
+			line->multidata = nmalloc(openfile->syntax->multiscore * sizeof(short));
 
 		/* Iterate through all the coloring regexes. */
 		for (; varnish != NULL; varnish = varnish->next) {
@@ -2908,11 +2914,8 @@ int update_softwrapped_line(linestruct *line)
 	}
 
 	/* If the first chunk is offscreen, don't even try to display it. */
-	if (row < 0 || row >= editwinrows) {
-		statusline(ALERT, "Badness: tried to display a chunk on row %i"
-								" -- please report a bug", row);
+	if (row < 0 || row >= editwinrows)
 		return 0;
-	}
 
 	starting_row = row;
 
@@ -3458,7 +3461,7 @@ void adjust_viewport(update_type manner)
 	int goal = 0;
 
 	if (manner == STATIONARY)
-		goal = openfile->current_y;
+		goal = openfile->cursor_row;
 	else if (manner == CENTERING)
 		goal = editwinrows / 2;
 	else if (!current_is_above_screen())
@@ -3551,7 +3554,7 @@ void spotlight(size_t from_col, size_t to_col)
 	wattron(midwin, interface_color_pair[SPOTLIGHTED]);
 	waddnstr(midwin, word, actual_x(word, to_col));
 	if (overshoots)
-		mvwaddch(midwin, openfile->current_y, COLS - 1 - sidebar, '>');
+		mvwaddch(midwin, openfile->cursor_row, COLS - 1 - sidebar, '>');
 	wattroff(midwin, interface_color_pair[SPOTLIGHTED]);
 
 	free(word);
@@ -3569,7 +3572,7 @@ void spotlight_softwrapped(size_t from_col, size_t to_col)
 	char *word;
 
 	place_the_cursor();
-	row = openfile->current_y;
+	row = openfile->cursor_row;
 
 	while (row < editwinrows) {
 		break_col = get_softwrap_breakpoint(openfile->current->data,

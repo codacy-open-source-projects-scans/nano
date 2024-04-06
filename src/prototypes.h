@@ -75,6 +75,7 @@ extern int shiftcontrolup, shiftcontroldown;
 extern int shiftcontrolhome, shiftcontrolend;
 extern int altleft, altright;
 extern int altup, altdown;
+extern int althome, altend;
 extern int altpageup, altpagedown;
 extern int altinsert, altdelete;
 extern int shiftaltleft, shiftaltright;
@@ -361,6 +362,10 @@ void to_first_line(void);
 void to_last_line(void);
 void do_page_up(void);
 void do_page_down(void);
+#ifndef NANO_TINY
+void to_top_row(void);
+void to_bottom_row(void);
+#endif
 #ifdef ENABLE_JUSTIFY
 void do_para_begin(linestruct **line);
 void do_para_end(linestruct **line);
