@@ -759,6 +759,7 @@ void do_redo(void)
 			do_redo();
 		u = openfile->current_undo;
 		goto_line_posx(u->head_lineno, u->head_x);
+		ensure_firstcolumn_is_aligned();
 		break;
 	case SPLIT_END:
 		redidmsg = _("addition");
@@ -878,6 +879,13 @@ void do_enter(void)
 	strcpy(&newnode->data[extra], openfile->current->data +
 										openfile->current_x);
 #ifndef NANO_TINY
+	/* Adjust the mark if it is on the current line after the cursor. */
+	if (openfile->mark == openfile->current &&
+				openfile->mark_x > openfile->current_x) {
+		openfile->mark = newnode;
+		openfile->mark_x += extra - openfile->current_x;
+	}
+
 	if (ISSET(AUTOINDENT)) {
 		/* Copy the whitespace from the sample line to the new one. */
 		strncpy(newnode->data, sampleline->data, extra);
@@ -892,13 +900,6 @@ void do_enter(void)
 
 #ifndef NANO_TINY
 	add_undo(ENTER, NULL);
-
-	/* Adjust the mark if it was on the current line after the cursor. */
-	if (openfile->mark == openfile->current &&
-				openfile->mark_x > openfile->current_x) {
-		openfile->mark = newnode;
-		openfile->mark_x += extra - openfile->current_x;
-	}
 #endif
 
 	/* Insert the newly created line after the current one and renumber. */
@@ -1338,6 +1339,12 @@ void do_wrap(void)
 
 	/* Now split the line. */
 	do_enter();
+
+#ifndef NANO_TINY
+	/* When wrapping a partially visible line, adjust start-of-screen. */
+	if (openfile->edittop == line && openfile->firstcolumn > 0 && cursor_x >= wrap_loc)
+		go_forward_chunks(1, &openfile->edittop, &openfile->firstcolumn);
+#endif
 
 #ifdef ENABLE_JUSTIFY
 	/* If the original line has quoting, copy it to the spillage line. */
