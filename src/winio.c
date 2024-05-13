@@ -630,6 +630,10 @@ int convert_CSI_sequence(const int *seq, size_t length, int *consumed)
 								return ALT_RIGHT;
 							case 'D': /* Esc [ 1 ; 3 D == Alt-Left on xterm. */
 								return ALT_LEFT;
+							case 'F': /* Esc [ 1 ; 3 F == Alt-End on xterm. */
+								return ALT_END;
+							case 'H': /* Esc [ 1 ; 3 H == Alt-Home on xterm. */
+								return ALT_HOME;
 						}
 						break;
 					case '4':
@@ -825,6 +829,8 @@ int convert_CSI_sequence(const int *seq, size_t length, int *consumed)
 #ifndef NANO_TINY
 			else if (length > 1 && seq[1] == '@')
 				return shiftcontrolhome;
+			else if (length > 1 && seq[1] == 0xFE)
+				return ALT_HOME;
 #endif
 			break;
 		case '8': /* Esc [ 8 ~ == End on Eterm/rxvt;
@@ -840,6 +846,8 @@ int convert_CSI_sequence(const int *seq, size_t length, int *consumed)
 #ifndef NANO_TINY
 			else if (length > 1 && seq[1] == '@')
 				return shiftcontrolend;
+			else if (length > 1 && seq[1] == 0xFE)
+				return ALT_END;
 #endif
 			break;
 		case '9': /* Esc [ 9 == Delete on Mach console. */
@@ -1052,6 +1060,12 @@ int parse_kbinput(WINDOW *frame)
 #endif
 			else if (keycode < 0x20 && !last_escape_was_alone)
 				meta_key = TRUE;
+#ifndef NANO_TINY
+			else if (keycode == KEY_HOME)
+				return ALT_HOME;
+			else if (keycode == KEY_END)
+				return ALT_END;
+#endif
 		} else if (waiting_codes == 0 || nextcodes[0] == ESC_CODE ||
 								(keycode != 'O' && keycode != '[')) {
 			if (!shifted_metas)
@@ -2213,7 +2227,7 @@ void minibar(void)
 		size_t count = openfile->filebot->lineno - (openfile->filebot->data[0] == '\0');
 
 		number_of_lines = nmalloc(49);
-		if (openfile->fmt == NIX_FILE)
+		if (openfile->fmt == NIX_FILE || openfile->fmt == UNSPECIFIED)
 			sprintf(number_of_lines, P_(" (%zu line)", " (%zu lines)", count), count);
 		else
 			sprintf(number_of_lines, P_(" (%zu line, %s)", " (%zu lines, %s)", count),

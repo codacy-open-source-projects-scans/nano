@@ -1015,7 +1015,7 @@ void send_data(const linestruct *line, int fd)
 /* Execute the given command in a shell. */
 void execute_command(const char *command)
 {
-#if defined(HAVE_FORK) && defined(HAVE_PIPE) && defined(HAVE_WAIT)
+#if defined(HAVE_FORK) && defined(HAVE_PIPE) && defined(HAVE_WAITPID)
 	int from_fd[2], to_fd[2];
 		/* The pipes through which text will be written and read. */
 	struct sigaction oldaction, newaction = {{0}};
@@ -1763,6 +1763,8 @@ bool write_file(const char *name, FILE *thefile, bool normal,
 #endif
 	char *realname = real_dir_from_tilde(name);
 		/* The filename after tilde expansion. */
+	int descriptor = 0;
+		/* The descriptor that gets assigned when opening the file. */
 	char *tempname = NULL;
 		/* The name of the temporary file we use when prepending. */
 	linestruct *line = openfile->filetop;
@@ -1846,7 +1848,6 @@ bool write_file(const char *name, FILE *thefile, bool normal,
 	 * For an emergency file, access is restricted to just the owner. */
 	if (thefile == NULL) {
 		mode_t permissions = (normal ? RW_FOR_ALL : S_IRUSR|S_IWUSR);
-		int fd;
 
 #ifndef NANO_TINY
 		block_sigwinch(TRUE);
@@ -1855,7 +1856,7 @@ bool write_file(const char *name, FILE *thefile, bool normal,
 #endif
 
 		/* Now open the file.  Use O_EXCL for an emergency file. */
-		fd = open(realname, O_WRONLY | O_CREAT | ((method == APPEND) ?
+		descriptor = open(realname, O_WRONLY | O_CREAT | ((method == APPEND) ?
 					O_APPEND : (normal ? O_TRUNC : O_EXCL)), permissions);
 
 #ifndef NANO_TINY
@@ -1865,7 +1866,7 @@ bool write_file(const char *name, FILE *thefile, bool normal,
 #endif
 
 		/* If we couldn't open the file, give up. */
-		if (fd == -1) {
+		if (descriptor < 0) {
 			if (errno == EINTR || errno == 0)
 				statusline(ALERT, _("Interrupted"));
 			else
@@ -1877,11 +1878,11 @@ bool write_file(const char *name, FILE *thefile, bool normal,
 			goto cleanup_and_exit;
 		}
 
-		thefile = fdopen(fd, (method == APPEND) ? "ab" : "wb");
+		thefile = fdopen(descriptor, (method == APPEND) ? "ab" : "wb");
 
 		if (thefile == NULL) {
 			statusline(ALERT, _("Error writing %s: %s"), realname, strerror(errno));
-			close(fd);
+			close(descriptor);
 			goto cleanup_and_exit;
 		}
 	}
@@ -1970,6 +1971,16 @@ bool write_file(const char *name, FILE *thefile, bool normal,
 			fclose(thefile);
 			goto cleanup_and_exit;
 		}
+#endif
+
+#if !defined(NANO_TINY) && defined(HAVE_CHMOD) && defined(HAVE_CHOWN)
+	/* Change permissions and owner of an emergency save file to the values
+	 * of the original file, but ignore any failure as we are in a hurry. */
+	if (method == EMERGENCY && descriptor && openfile->statinfo) {
+		IGNORE_CALL_RESULT(fchmod(descriptor, openfile->statinfo->st_mode));
+		IGNORE_CALL_RESULT(fchown(descriptor, openfile->statinfo->st_uid,
+											openfile->statinfo->st_gid));
+	}
 #endif
 
 	if (fclose(thefile) != 0) {
