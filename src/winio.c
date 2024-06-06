@@ -381,7 +381,7 @@ int get_code_from_plantation(void)
 		return PLANTED_A_COMMAND;
 	} else {
 		char *opening = strchr(plants_pointer, '{');
-		char firstbyte = *plants_pointer;
+		unsigned char firstbyte = *plants_pointer;
 		int length;
 
 		if (opening) {
@@ -409,7 +409,7 @@ int get_input(WINDOW *frame)
 	else if (frame)
 		read_keys_from(frame);
 
-	if (waiting_codes > 0) {
+	if (waiting_codes) {
 		waiting_codes--;
 #ifdef ENABLE_NANORC
 		if (*nextcodes == MORE_PLANTS) {

@@ -574,8 +574,7 @@ void usage(void)
 					N_("Which other characters are word parts"));
 #endif
 #ifdef ENABLE_COLOR
-	if (!ISSET(RESTRICTED))
-		print_opt(_("-Y <name>"), _("--syntax=<name>"),
+	print_opt(_("-Y <name>"), _("--syntax=<name>"),
 					N_("Syntax definition to use for coloring"));
 #endif
 #ifndef NANO_TINY
@@ -642,10 +641,14 @@ void usage(void)
 #ifndef NANO_TINY
 	print_opt("-y", "--afterends", N_("Make Ctrl+Right stop at word ends"));
 #endif
+#ifdef ENABLE_COLOR
+	print_opt("-z", "--listsyntaxes", N_("List the names of available syntaxes"));
+#endif
 #ifdef HAVE_LIBMAGIC
 	print_opt("-!", "--magic", N_("Also try magic to determine syntax"));
 #endif
 #ifndef NANO_TINY
+	print_opt("-@", "--colonparsing", N_("Accept 'filename:linenumber' notation"));
 	print_opt("-%", "--stateflags", N_("Show some states on the title bar"));
 	print_opt("-_", "--minibar", N_("Show a feedback bar at the bottom"));
 	print_opt("-0", "--zero", N_("Hide all bars, use whole terminal"));
@@ -794,6 +797,27 @@ void version(void)
 #endif
 	printf("\n");
 }
+
+#ifdef ENABLE_COLOR
+/* List the names of the available syntaxes. */
+void list_syntax_names(void)
+{
+	int width = 0;
+
+	printf(_("Available syntaxes:\n"));
+
+	for (syntaxtype *sntx = syntaxes; sntx != NULL; sntx = sntx->next) {
+		if (width > 45) {
+			printf("\n");
+			width = 0;
+		}
+		printf(" %s", sntx->name);
+		width += wideness(sntx->name, 45 * 4);
+	}
+
+	printf("\n");
+}
+#endif
 
 /* Register that Ctrl+C was pressed during some system call. */
 void make_a_note(int signal)
@@ -1772,6 +1796,9 @@ int main(int argc, char **argv)
 		{"nowrap", 0, NULL, 'w'},
 #endif
 		{"nohelp", 0, NULL, 'x'},
+#ifdef ENABLE_COLOR
+		{"listsyntaxes", 0, NULL, 'z'},
+#endif
 		{"modernbindings", 0, NULL, '/'},
 #ifndef NANO_TINY
 		{"smarthome", 0, NULL, 'A'},
@@ -1799,6 +1826,7 @@ int main(int argc, char **argv)
 		{"indicator", 0, NULL, 'q'},
 		{"unix", 0, NULL, 'u'},
 		{"afterends", 0, NULL, 'y'},
+		{"colonparsing", 0, NULL, '@'},
 		{"stateflags", 0, NULL, '%'},
 		{"minibar", 0, NULL, '_'},
 		{"zero", 0, NULL, '0'},
@@ -1849,8 +1877,8 @@ int main(int argc, char **argv)
 	else if (*(tail(argv[0])) == 'e')
 		SET(MODERN_BINDINGS);
 
-	while ((optchr = getopt_long(argc, argv, "ABC:DEFGHIJ:KLMNOPQ:RS$T:UVWX:Y:Z"
-				"abcdef:ghijklmno:pqr:s:tuvwxy!%_0/", long_options, NULL)) != -1) {
+	while ((optchr = getopt_long(argc, argv, "ABC:DEFGHIJ:KLMNOPQ:RST:UVWX:Y:Z"
+				"abcdef:ghijklmno:pqr:s:tuvwxyz!@%_0/", long_options, NULL)) > 0) {
 		switch (optchr) {
 #ifndef NANO_TINY
 			case 'A':
@@ -1936,7 +1964,6 @@ int main(int argc, char **argv)
 				break;
 #ifndef NANO_TINY
 			case 'S':
-			case '$':  /* Deprecated; remove in 2024. */
 				SET(SOFTWRAP);
 				break;
 			case 'T':
@@ -2083,12 +2110,23 @@ int main(int argc, char **argv)
 				SET(AFTER_ENDS);
 				break;
 #endif
+#ifdef ENABLE_COLOR
+			case 'z':
+				if (!ignore_rcfiles)
+					do_rcfiles();
+				if (syntaxes)
+					list_syntax_names();
+				exit(0);
+#endif
 #ifdef HAVE_LIBMAGIC
 			case '!':
 				SET(USE_MAGIC);
 				break;
 #endif
 #ifndef NANO_TINY
+			case '@':
+				SET(COLON_PARSING);
+				break;
 			case '%':
 				SET(STATEFLAGS);
 				break;
@@ -2497,30 +2535,32 @@ int main(int argc, char **argv)
 #endif
 		{
 			char *filename = argv[optind++];
+#ifndef NANO_TINY
 			struct stat fileinfo;
 
 			/* If the filename contains a colon and this file does not exist,
-			 * then check if the filename ends with a number (while skipping
-			 * any colon preceded by a backslash and eliding the backslash).
-			 * If there is a valid trailing number, chop colon and number off.
+			 * then check if the filename ends with digits preceded by a colon
+			 * (possibly preceded by more digits and a colon).  If there is or
+			 * are such trailing numbers, chop the colons plus numbers off.
 			 * The number is later used to place the cursor on that line. */
-			if (strchr(filename, ':') && stat(filename, &fileinfo) < 0) {
-				char *colon = filename + (*filename ? 1 : 0);
-
-				while ((colon = strchr(colon, ':'))) {
-					if (*(colon - 1) == '\\')
-						memmove(colon - 1, colon, strlen(colon) + 1);
-					else if (parse_line_column(colon + 1, &givenline, &givencol)) {
-						*colon = '\0';
-						if (stat(filename, &fileinfo) < 0) {
-							*colon++ = ':';
-							givencol = 0;
-						}
-					} else
-						++colon;
+			if (ISSET(COLON_PARSING) && !givenline && strchr(filename, ':') &&
+									!givencol && stat(filename, &fileinfo) < 0) {
+				char *coda = filename + strlen(filename);
+  maybe_two:
+				while (--coda > filename + 1 && ('0' <= *coda && *coda <= '9'))
+					;
+				if (*coda == ':' && ('0' <= *(coda + 1) && *(coda +1) <= '9')) {
+					*coda = '\0';
+					if (stat(filename, &fileinfo) < 0) {
+						*coda = ':';
+						/* If this was the first colon, look for a second one. */
+						if (!strchr(coda + 1, ':'))
+							goto maybe_two;
+					} else if (!parse_line_column(coda + 1, &givenline, &givencol))
+						die(_("Invalid number\n"));
 				}
 			}
-
+#endif
 			if (!open_buffer(filename, TRUE))
 				continue;
 		}

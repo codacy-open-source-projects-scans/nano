@@ -69,7 +69,7 @@ static const rcoption rcopts[] = {
 	{"nohelp", NO_HELP},
 	{"nonewlines", NO_NEWLINES},
 #ifdef ENABLE_WRAPPING
-	{"nowrap", NO_WRAP},  /* Deprecated; remove in 2024. */
+	{"nowrap", NO_WRAP},  /* Deprecated; remove in 2027. */
 #endif
 #ifdef ENABLE_OPERATINGDIR
 	{"operatingdir", 0},
@@ -98,6 +98,7 @@ static const rcoption rcopts[] = {
 	{"backup", MAKE_BACKUP},
 	{"backupdir", 0},
 	{"bookstyle", BOOKSTYLE},
+	{"colonparsing", COLON_PARSING},
 	{"cutfromcursor", CUT_FROM_CURSOR},
 	{"emptyline", EMPTY_LINE},
 	{"guidestripe", 0},
@@ -469,8 +470,7 @@ keystruct *strtosc(const char *input)
 		else if (!strcmp(input, "cutfromcursor"))
 			s->toggle = CUT_FROM_CURSOR;
 #ifdef ENABLE_WRAPPING
-		else if (!strcmp(input, "breaklonglines") ||
-		         !strcmp(input, "nowrap"))  /* Deprecated; remove in 2024. */
+		else if (!strcmp(input, "breaklonglines"))
 			s->toggle = BREAK_LONG_LINES;
 #endif
 		else if (!strcmp(input, "tabstospaces"))
@@ -1048,7 +1048,7 @@ short indices[COLORCOUNT] = { COLOR_RED, COLOR_GREEN, COLOR_BLUE,
 short color_to_short(const char *colorname, bool *vivid, bool *thick)
 {
 	if (strncmp(colorname, "bright", 6) == 0 && colorname[6] != '\0') {
-		/* Prefix "bright" is deprecated; remove in 2024. */
+		/* Prefix "bright" is deprecated; remove in 2027. */
 		*vivid = TRUE;
 		*thick = TRUE;
 		colorname += 6;

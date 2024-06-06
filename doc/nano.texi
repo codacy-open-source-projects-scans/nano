@@ -156,9 +156,6 @@ The cursor can be put on a specific line of a file by adding
 the line number with a plus sign before the filename, and even
 in a specific column by adding it with a comma.
 Negative numbers count from the end of the file or line.
-The line and column numbers may also be specified by gluing them with colons
-after the filename.  (When a filename contains a colon followed by digits,
-escape the colon by preceding it with a triple backslash.)
 
 The cursor can be put on the first or last occurrence of a specific string
 by specifying that string after @code{+/} or @code{+?} before the filename.
@@ -430,9 +427,10 @@ The uniquely numbered files are stored in the specified directory.
 
 @item -D
 @itemx --boldtext
-For the interface, use bold instead of reverse video.  This will be overridden
+For the interface, use bold instead of reverse video.
+This can be overridden for specific elements
 by setting the options @code{titlecolor}, @code{statuscolor},
-@code{promptcolor}, @code{minicolor}, @code{keycolor}, @code{functioncolor},
+@code{promptcolor}, @code{minicolor}, @code{keycolor},
 @code{numbercolor}, and/or @code{selectedcolor} in your
 nanorc file.  @xref{@code{set keycolor}} for details.
 
@@ -521,7 +519,6 @@ any name beginning with @code{r} (e.g.@: @command{rnano}).
 Display over multiple screen rows lines that exceed the screen's width.
 (You can make this soft-wrapping occur at whitespace instead of rudely at
 the screen's edge, by using also @code{--atblanks}.)
-(The old short option, @code{-$}, is deprecated.)
 
 @item -T @var{number}
 @itemx --tabsize=@var{number}
@@ -715,10 +712,25 @@ disabled to display the help-system navigation keys.
 Make @kbd{Ctrl+Right} and @kbd{Ctrl+Delete} stop at word ends
 instead of beginnings.
 
+@item -z
+@itemx --listsyntaxes
+List the names of the available syntaxes and exit.
+
 @item -!
 @itemx --magic
 When neither the file's name nor its first line give a clue,
 try using libmagic to determine the applicable syntax.
+
+@item -@
+@itemx --colonparsing
+When a filename given on the command line ends in a colon plus digits
+and this filename does not exist, then snip the colon plus digits and
+understand the digits as a line number.  If the trimmed filename does
+not exist either, then repeat the process and understand the obtained
+two numbers as line and column number.  But if the doubly trimmed
+filename does not exist either, then forget the trimming and accept
+the original filename as is.  To disable this colon parsing, use
+something like @code{+1} before the filename.
 
 @item -%
 @itemx --stateflags
@@ -773,7 +785,6 @@ Note that this overrides option @option{-p} (@option{--preserve}).
 @end table
 
 @sp 1
-Option @code{-z} (@code{--suspendable}) has been removed.
 Suspension is enabled by default, reachable via @kbd{^T^Z}.
 (If you want a plain @kbd{^Z} to suspend nano, add
 @code{bind ^Z suspend main} to your nanorc.)
@@ -907,10 +918,11 @@ with @code{set backup} or @option{--backup} or @option{-B}.
 The uniquely numbered files are stored in the specified directory.
 
 @item set boldtext
-Use bold instead of reverse video for the title bar, status bar, key combos,
-function tags, line numbers, and selected text.  This is overridden by
-setting the options @code{titlecolor}, @code{statuscolor}, @code{keycolor},
-@code{functioncolor}, @code{numbercolor}, and/or @code{selectedcolor}.
+Use bold instead of reverse video for the title bar, status bar,
+prompt bar, mini bar, key combos, line numbers, and selected text.
+This can be overridden by setting the options @code{titlecolor},
+@code{statuscolor}, @code{promptcolor}, @code{minicolor},
+@code{keycolor}, @code{numbercolor}, and/or @code{selectedcolor}.
 
 @item set bookstyle
 When justifying, treat any line that starts with whitespace as the
@@ -928,6 +940,16 @@ Automatically hard-wrap the current line when it becomes overlong.
 
 @item set casesensitive
 Do case-sensitive searches by default.
+
+@item set colonparsing
+When a filename given on the command line ends in a colon plus digits
+and this filename does not exist, then snip the colon plus digits and
+understand the digits as a line number.  If the trimmed filename does
+not exist either, then repeat the process and understand the obtained
+two numbers as line and column number.  But if the doubly trimmed
+filename does not exist either, then forget the trimming and accept
+the original filename as is.  To disable this colon parsing, use
+something like @code{+1} before the filename.
 
 @item set constantshow
 Constantly display the cursor position on the status bar.
@@ -1834,7 +1856,6 @@ position to the end of the line.
 
 @item breaklonglines
 Toggles whether long lines will be hard-wrapped to the next line.
-(The old name of this function, 'nowrap', is deprecated.)
 
 @item tabstospaces
 Toggles whether typed tabs will be converted to spaces.
