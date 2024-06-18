@@ -139,6 +139,9 @@ int *bardata = NULL;
 		/* An array of characters that together depict the scrollbar. */
 ssize_t stripe_column = 0;
 		/* The column at which a vertical bar will be drawn. */
+int cycling_aim = 0;
+		/* Whether to center the line with the cursor (0), push it
+		 * to the top of the viewport (1), or to the bottom (2). */
 #endif
 
 linestruct *cutbuffer = NULL;
@@ -580,6 +583,7 @@ void shortcut_init(void)
 	const char *replace_gist = N_("Replace a string or a regular expression");
 	const char *gotoline_gist = N_("Go to line and column number");
 #ifndef NANO_TINY
+	const char *bracket_gist = N_("Go to the matching bracket");
 	const char *mark_gist = N_("Mark text starting from the cursor position");
 	const char *zap_gist = N_("Throw away the current line (or marked region)");
 	const char *indent_gist = N_("Indent the current line (or marked lines)");
@@ -606,20 +610,18 @@ void shortcut_init(void)
 #ifndef NANO_TINY
 	const char *toprow_gist = N_("Go to first row in the viewport");
 	const char *bottomrow_gist = N_("Go to last row in the viewport");
+	const char *center_gist = N_("Center the line where the cursor is");
+	const char *cycle_gist = N_("Push the cursor line to the center, then top, then bottom");
 #endif
 	const char *prevpage_gist = N_("Go one screenful up");
 	const char *nextpage_gist = N_("Go one screenful down");
 	const char *firstline_gist = N_("Go to the first line of the file");
 	const char *lastline_gist = N_("Go to the last line of the file");
-#ifndef NANO_TINY
-	const char *bracket_gist = N_("Go to the matching bracket");
-#endif
 #if !defined(NANO_TINY) || defined(ENABLE_HELP)
 	const char *scrollup_gist =
 		N_("Scroll up one line without moving the cursor textually");
 	const char *scrolldown_gist =
 		N_("Scroll down one line without moving the cursor textually");
-	const char *center_gist = N_("Center the line where the cursor is");
 #endif
 #ifdef ENABLE_MULTIBUFFER
 	const char *prevfile_gist = N_("Switch to the previous file buffer");
@@ -1077,11 +1079,13 @@ void shortcut_init(void)
 
 #ifdef ENABLE_HELP
 	add_to_funcs(full_refresh, MMAIN,
-			N_("Refresh"), WHENHELP(refresh_gist), TOGETHER);
+			N_("Refresh"), WHENHELP(refresh_gist), BLANKAFTER);
 #endif
-#if !defined(NANO_TINY) || defined(ENABLE_HELP)
+#ifndef NANO_TINY
 	add_to_funcs(do_center, MMAIN,
-			N_("Center"), WHENHELP(center_gist), BLANKAFTER);
+			N_("Center"), WHENHELP(center_gist), TOGETHER);
+	add_to_funcs(do_cycle, MMAIN,
+			N_("Cycle"), WHENHELP(cycle_gist), BLANKAFTER);
 #endif
 
 	add_to_funcs(do_savefile, MMAIN,
@@ -1313,7 +1317,6 @@ void shortcut_init(void)
 	add_to_sclist(MMAIN, "^6", 0, do_mark, 0);
 	add_to_sclist(MMAIN, "^^", 0, do_mark, 0);
 	add_to_sclist(MMAIN, "M-}", 0, do_indent, 0);
-	add_to_sclist(MMAIN, "", INDENT_KEY, do_indent, 0);
 	add_to_sclist(MMAIN, "M-{", 0, do_unindent, 0);
 	add_to_sclist(MMAIN, "Sh-Tab", SHIFT_TAB, do_unindent, 0);
 	add_to_sclist(MMAIN, "M-:", 0, record_macro, 0);
@@ -1430,8 +1433,8 @@ void shortcut_init(void)
 	add_to_sclist(MMAIN, "M-J", 0, do_full_justify, 0);
 	add_to_sclist(MEXECUTE, "^J", 0, do_full_justify, 0);
 #endif
-#if !defined(NANO_TINY) || defined(ENABLE_HELP)
-	add_to_sclist(MMAIN, "^L", 0, do_center, 0);
+#ifndef NANO_TINY
+	add_to_sclist(MMAIN, "^L", 0, do_cycle, 0);
 #endif
 	add_to_sclist(MMOST|MBROWSER|MHELP|MYESNO, "^L", 0, full_refresh, 0);
 

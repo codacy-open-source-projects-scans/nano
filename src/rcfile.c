@@ -322,6 +322,8 @@ keystruct *strtosc(const char *input)
 		s->func = do_undo;
 	else if (!strcmp(input, "redo"))
 		s->func = do_redo;
+	else if (!strcmp(input, "suspend"))
+		s->func = do_suspend;
 #endif
 	else if (!strcmp(input, "left") ||
 	         !strcmp(input, "back"))
@@ -340,8 +342,6 @@ keystruct *strtosc(const char *input)
 		s->func = do_scroll_up;
 	else if (!strcmp(input, "scrolldown"))
 		s->func = do_scroll_down;
-	else if (!strcmp(input, "center"))
-		s->func = do_center;
 #endif
 	else if (!strcmp(input, "prevword"))
 		s->func = to_prev_word;
@@ -360,6 +360,10 @@ keystruct *strtosc(const char *input)
 		s->func = to_top_row;
 	else if (!strcmp(input, "bottomrow"))
 		s->func = to_bottom_row;
+	else if (!strcmp(input, "center"))
+		s->func = do_center;
+	else if (!strcmp(input, "cycle"))
+		s->func = do_cycle;
 #endif
 	else if (!strcmp(input, "pageup") ||
 	         !strcmp(input, "prevpage"))
@@ -389,10 +393,6 @@ keystruct *strtosc(const char *input)
 		s->func = do_backspace;
 	else if (!strcmp(input, "refresh"))
 		s->func = full_refresh;
-#ifndef NANO_TINY
-	else if (!strcmp(input, "suspend"))
-		s->func = do_suspend;
-#endif
 	else if (!strcmp(input, "casesens"))
 		s->func = case_sens_void;
 	else if (!strcmp(input, "regexp"))

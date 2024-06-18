@@ -207,7 +207,29 @@ void to_bottom_row(void)
 
 	place_the_cursor();
 }
-#endif
+
+/* Put the cursor line at the center, then the top, then the bottom. */
+void do_cycle(void)
+{
+	if (cycling_aim == 0)
+		adjust_viewport(CENTERING);
+	else {
+		openfile->cursor_row = (cycling_aim == 1) ? 0 : editwinrows - 1;
+		adjust_viewport(STATIONARY);
+	}
+
+	cycling_aim = (cycling_aim + 1) % 3;
+
+	draw_all_subwindows();
+	full_refresh();
+}
+
+/* Scroll the line with the cursor to the center of the screen. */
+void do_center(void)
+{
+	do_cycle();  /* The main loop has set 'cycling_aim' to zero. */
+}
+#endif /* !NANO_TINY */
 
 #ifdef ENABLE_JUSTIFY
 /* Move to the first beginning of a paragraph before the current line. */
@@ -559,7 +581,8 @@ void do_up(void)
 
 	set_proper_index_and_pww(&leftedge, target_column, FALSE);
 
-	if (openfile->cursor_row == 0 && !ISSET(JUMPY_SCROLLING))
+	if (openfile->cursor_row == 0 && !ISSET(JUMPY_SCROLLING) &&
+						(tabsize < editwincols || !ISSET(SOFTWRAP)))
 		edit_scroll(BACKWARD);
 	else
 		edit_redraw(was_current, FLOWING);
@@ -582,7 +605,8 @@ void do_down(void)
 
 	set_proper_index_and_pww(&leftedge, target_column, TRUE);
 
-	if (openfile->cursor_row == editwinrows - 1 && !ISSET(JUMPY_SCROLLING))
+	if (openfile->cursor_row == editwinrows - 1 && !ISSET(JUMPY_SCROLLING) &&
+								(tabsize < editwincols || !ISSET(SOFTWRAP)))
 		edit_scroll(FORWARD);
 	else
 		edit_redraw(was_current, FLOWING);
@@ -619,14 +643,6 @@ void do_scroll_down(void)
 #endif
 										))
 		edit_scroll(FORWARD);
-}
-
-/* Scroll the line with the cursor to the center of the screen. */
-void do_center(void)
-{
-	adjust_viewport(CENTERING);
-	draw_all_subwindows();
-	full_refresh();
 }
 #endif /* !NANO_TINY || ENABLE_HELP */
 
