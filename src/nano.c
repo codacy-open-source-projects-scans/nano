@@ -1592,7 +1592,7 @@ void process_a_keystroke(void)
 	lastmessage = VACUUM;
 
 #ifndef NANO_TINY
-	if (input == KEY_WINCH)
+	if (input == THE_WINDOW_RESIZED)
 		return;
 #endif
 #ifdef ENABLE_MOUSE
@@ -2552,7 +2552,7 @@ int main(int argc, char **argv)
   maybe_two:
 				while (--coda > filename + 1 && ('0' <= *coda && *coda <= '9'))
 					;
-				if (*coda == ':' && ('0' <= *(coda + 1) && *(coda +1) <= '9')) {
+				if (*coda == ':' && ('0' <= *(coda + 1) && *(coda + 1) <= '9')) {
 					*coda = '\0';
 					if (stat(filename, &fileinfo) < 0) {
 						*coda = ':';

@@ -123,14 +123,9 @@ void run_macro(void)
 		return;
 	}
 
-	if (macro_length > capacity)
-		reserve_space_for(macro_length);
+	for (size_t index = macro_length; index > 0; )
+		put_back(macro_buffer[--index]);
 
-	for (size_t i = 0; i < macro_length; i++)
-		key_buffer[i] = macro_buffer[i];
-
-	waiting_codes = macro_length;
-	nextcodes = key_buffer;
 	mute_modifiers = TRUE;
 }
 #endif /* !NANO_TINY */
@@ -218,7 +213,7 @@ void read_keys_from(WINDOW *frame)
 #ifndef NANO_TINY
 		if (the_window_resized) {
 			regenerate_screen();
-			input = KEY_WINCH;
+			input = THE_WINDOW_RESIZED;
 		}
 
 		if (timed) {
@@ -272,7 +267,7 @@ void read_keys_from(WINDOW *frame)
 	}
 
 	/* If we got a SIGWINCH, get out as the frame argument is no longer valid. */
-	if (input == KEY_WINCH)
+	if (input == THE_WINDOW_RESIZED)
 		return;
 
 	/* Remember where the recording of this keystroke (or burst of them) started. */
@@ -660,6 +655,8 @@ int convert_CSI_sequence(const int *seq, size_t length, int *consumed)
 								return CONTROL_RIGHT;
 							case 'D': /* Esc [ 1 ; 5 D == Ctrl-Left on xterm. */
 								return CONTROL_LEFT;
+							case 'E': /* Esc [ 1 ; 5 E == Ctrl-"Center" on xterm. */
+								return KEY_CENTER;
 							case 'F': /* Esc [ 1 ; 5 F == Ctrl-End on xterm. */
 								return CONTROL_END;
 							case 'H': /* Esc [ 1 ; 5 H == Ctrl-Home on xterm. */
@@ -1443,7 +1440,7 @@ int *parse_verbatim_kbinput(WINDOW *frame, size_t *count)
 
 #ifndef NANO_TINY
 	/* When the window was resized, abort and return nothing. */
-	if (keycode == KEY_WINCH) {
+	if (keycode == THE_WINDOW_RESIZED) {
 		*count = 999;
 		return NULL;
 	}
@@ -1467,7 +1464,7 @@ int *parse_verbatim_kbinput(WINDOW *frame, size_t *count)
 		}
 
 #ifndef NANO_TINY
-		if (keycode == KEY_WINCH) {
+		if (keycode == THE_WINDOW_RESIZED) {
 			*count = 999;
 			free(yield);
 			return NULL;
