@@ -1573,18 +1573,11 @@ char *get_verbatim_kbinput(WINDOW *frame, size_t *count)
 }
 
 #ifdef ENABLE_MOUSE
-/* Handle any mouse event that may have occurred.  We currently handle
- * releases/clicks of the first mouse button.  If allow_shortcuts is
- * TRUE, releasing/clicking on a visible shortcut will put back the
- * keystroke associated with that shortcut.  If ncurses supports them,
- * we also handle presses of the fourth mouse button (upward rolls of
- * the mouse wheel) by putting back keystrokes to scroll up, and presses
- * of the fifth mouse button (downward rolls of the mouse wheel) by
- * putting back keystrokes to scroll down.  We also store the coordinates
- * of a mouse event that needs further handling in mouse_x and mouse_y.
- * Return -1 on error, 0 if the mouse event needs to be handled, 1 if it's
+/* Handle clicks of the first mouse button, and rolls of the mouse wheel.
+ * Store the coordinates of the mouse event in `mouse_x` and `mouse_y`.
+ * Return -1 on error, 0 if the mouse event needs handling, 1 if it has
  * been handled by putting back keystrokes, or 2 if it's been ignored. */
-int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
+int get_mouseinput(int *mouse_y, int *mouse_x)
 {
 	bool in_middle, in_footer;
 	MEVENT event;
@@ -1600,14 +1593,19 @@ int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
 	*mouse_x = event.x - (in_middle ? margin : 0);
 	*mouse_y = event.y;
 
-	/* Handle releases/clicks of the first mouse button. */
+	/* Handle clicks/releases of the first mouse button. */
 	if (event.bstate & (BUTTON1_RELEASED | BUTTON1_CLICKED)) {
-		/* If we're allowing shortcuts, and the current shortcut list is
-		 * being displayed on the last two lines of the screen, and the
-		 * first mouse button was released on/clicked inside it, we need
-		 * to figure out which shortcut was released on/clicked and put
-		 * back the equivalent keystroke(s) for it. */
-		if (allow_shortcuts && !ISSET(NO_HELP) && in_footer) {
+		/* Clicking in the "scrollbar" goes to the roughly corresponding line. */
+		if (in_middle && sidebar && event.x == (COLS - 1) && currmenu == MMAIN) {
+			wmouse_trafo(midwin, mouse_y, mouse_x, FALSE);
+			*mouse_y += (*mouse_y ? 1 : 0);
+			goto_line_and_column(openfile->filebot->lineno * *mouse_y / editwinrows + 1,
+									openfile->placewewant + 1, TRUE);
+			refresh_needed = TRUE;
+		} else
+		/* Clicking on one of the shortcuts in the two help lines
+		 * should be transformed to the equivalent keystroke. */
+		if (in_footer && !ISSET(NO_HELP) && currmenu != MYESNO) {
 			int width;
 				/* The width of each shortcut item, except the last two. */
 			int index;
@@ -1615,16 +1613,12 @@ int get_mouseinput(int *mouse_y, int *mouse_x, bool allow_shortcuts)
 			size_t number;
 				/* The number of shortcut items that get displayed. */
 
+			/* Clicks in the prompt bar are handled elsewhere. */
+			if (*mouse_y == (LINES - 3))
+				return 0;
+
 			/* Shift the coordinates to be relative to the bottom window. */
 			wmouse_trafo(footwin, mouse_y, mouse_x, FALSE);
-
-			/* Clicks on the status bar are handled elsewhere, so
-			 * restore the untranslated mouse-event coordinates. */
-			if (*mouse_y == 0) {
-				*mouse_x = event.x;
-				*mouse_y = event.y;
-				return 0;
-			}
 
 			/* Determine how many shortcuts are being shown. */
 			number = shown_entries_for(currmenu);
@@ -2328,6 +2322,8 @@ void statusline(message_type importance, const char *msg, ...)
 	}
 
 #if defined(ENABLE_MULTIBUFFER) && !defined(NANO_TINY)
+	/* Save the first error message for each buffer (except for the first buffer),
+	 * so that this message can be shown later, when the buffer is switched to. */
 	if (!we_are_running && importance == ALERT && openfile && !openfile->fmt &&
 						!openfile->errormessage && openfile->next != openfile)
 		openfile->errormessage = copy_of(compound);
