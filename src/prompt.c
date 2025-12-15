@@ -2,7 +2,7 @@
  *   prompt.c  --  This file is part of GNU nano.                         *
  *                                                                        *
  *   Copyright (C) 1999-2011, 2013-2025 Free Software Foundation, Inc.    *
- *   Copyright (C) 2016, 2018, 2020, 2022 Benno Schulenberg               *
+ *   Copyright (C) 2016, 2018, 2020-2022, 2025 Benno Schulenberg          *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
  *   it under the terms of the GNU General Public License as published    *
@@ -193,21 +193,21 @@ void paste_into_answer(void)
 #endif
 
 #ifdef ENABLE_MOUSE
-/* Handle a mouse click on the status-bar prompt or the shortcut list. */
-int do_statusbar_mouse(void)
+/* Handle a mouse click in the prompt bar or the help lines. */
+int process_prompt_click(void)
 {
 	int click_row, click_col;
-	int retval = get_mouseinput(&click_row, &click_col);
+	int retval = get_mouseinput(&click_row, &click_col);  /* Handles shortcuts. */
 
-	/* We can click on the status-bar window text to move the cursor. */
+	/* When the click is in the prompt bar, position the cursor. */
 	if (retval == 0 && wmouse_trafo(footwin, &click_row, &click_col, FALSE)) {
 		size_t start_col = breadth(prompt) + 2;
 
-		/* Move to where the click occurred. */
-		if (click_row == 0 && click_col >= start_col)
-			typing_x = actual_x(answer,
-							get_statusbar_page_start(start_col, start_col +
-							wideness(answer, typing_x)) + click_col - start_col);
+		if (click_col >= start_col)
+			typing_x = actual_x(answer, get_statusbar_page_start(start_col, start_col +
+								wideness(answer, typing_x)) + click_col - start_col);
+		else
+			typing_x = 0;
 	}
 
 	return retval;
@@ -457,7 +457,7 @@ functionptrtype acquire_an_answer(int *actual, bool *listed,
 #endif
 #ifdef ENABLE_MOUSE
 		/* For a click on a shortcut, read in the resulting keycode. */
-		if (input == KEY_MOUSE && do_statusbar_mouse() == 1)
+		if (input == KEY_MOUSE && process_prompt_click() == 1)
 			input = get_kbinput(footwin, BLIND);
 		if (input == KEY_MOUSE)
 			continue;

@@ -2,7 +2,7 @@
  *   nano.c  --  This file is part of GNU nano.                           *
  *                                                                        *
  *   Copyright (C) 1999-2011, 2013-2025 Free Software Foundation, Inc.    *
- *   Copyright (C) 2014-2022 Benno Schulenberg                            *
+ *   Copyright (C) 2014-2025 Benno Schulenberg                            *
  *                                                                        *
  *   GNU nano is free software: you can redistribute it and/or modify     *
  *   it under the terms of the GNU General Public License as published    *
@@ -1336,11 +1336,11 @@ void unbound_key(int code)
 }
 
 #ifdef ENABLE_MOUSE
-/* Handle a mouse click on the edit window or the shortcut list. */
-int do_mouse(void)
+/* Handle a mouse click in the edit window or the help lines. */
+int process_click(void)
 {
 	int click_row, click_col;
-	int retval = get_mouseinput(&click_row, &click_col);
+	int retval = get_mouseinput(&click_row, &click_col);  /* Handles shortcuts. */
 
 	/* If the click is wrong or already handled, we're done. */
 	if (retval != 0)
@@ -1602,7 +1602,7 @@ void process_a_keystroke(void)
 	if (input == KEY_MOUSE) {
 		/* If the user clicked on a shortcut, read in the key code that it was
 		 * converted into.  Else the click has been handled or was invalid. */
-		if (do_mouse() == 1)
+		if (process_click() == 1)
 			input = get_kbinput(midwin, BLIND);
 		else
 			return;
