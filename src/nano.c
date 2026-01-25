@@ -654,6 +654,7 @@ void usage(void)
 	print_opt("-0", "--zero", N_("Hide all bars, use whole terminal"));
 #endif
 	print_opt("-/", "--modernbindings", N_("Use better-known key bindings"));
+	print_opt("-1", "--solosidescroll", N_("Scroll only the current line sideways"));
 }
 
 /* Display the version number of this nano, a copyright notice, some contact
@@ -1551,6 +1552,10 @@ void inject(char *burst, size_t count)
 
 	openfile->placewewant = xplustabs();
 
+	/* When panning, and we have come near the edge of the viewport... */
+	if (united_sidescroll && openfile->placewewant > brink + editwincols - CUSHION - 1 )
+		refresh_needed = TRUE;
+
 #ifndef NANO_TINY
 	/* When softwrapping and the number of chunks in the current line changed,
 	 * or we were on the last row of the edit window and moved to a new chunk,
@@ -1805,6 +1810,7 @@ int main(int argc, char **argv)
 		{"listsyntaxes", 0, NULL, 'z'},
 #endif
 		{"modernbindings", 0, NULL, '/'},
+		{"solosidescroll", 0, NULL, '1'},
 #ifndef NANO_TINY
 		{"smarthome", 0, NULL, 'A'},
 		{"backup", 0, NULL, 'B'},
@@ -1882,7 +1888,7 @@ int main(int argc, char **argv)
 		SET(RESTRICTED);
 
 	while ((optchr = getopt_long(argc, argv, "ABC:DEFGHIJ:KLMNOPQ:RST:UVWX:Y:Z"
-				"abcdef:ghijklmno:pqr:s:tuvwxyz!@%_0/", long_options, NULL)) > 0) {
+				"abcdef:ghijklmno:pqr:s:tuvwxyz!@%_01/", long_options, NULL)) > 0) {
 		switch (optchr) {
 #ifndef NANO_TINY
 			case 'A':
@@ -2146,6 +2152,9 @@ int main(int argc, char **argv)
 #endif
 			case '/':
 				SET(MODERN_BINDINGS);
+				break;
+			case '1':
+				SET(SOLO_SIDESCROLL);
 				break;
 			default:
 				printf(_("Type '%s -h' for a list of available options.\n"), argv[0]);
@@ -2677,6 +2686,14 @@ int main(int argc, char **argv)
 #endif
 		if (currmenu != MMAIN)
 			bottombars(MMAIN);
+
+		/* Do sideways scrolling only when the user didn't switch it off,
+		 * when not softwrapping, and the window is wide enough. */
+		if (united_sidescroll != (!ISSET(SOLO_SIDESCROLL) && !ISSET(SOFTWRAP) &&
+									editwincols > 2 * CUSHION + 2)) {
+			united_sidescroll = !united_sidescroll;
+			refresh_needed = TRUE;
+		}
 
 #ifndef NANO_TINY
 		if (ISSET(MINIBAR) && !ISSET(ZERO) && LINES > 1 && lastmessage < REMARK)
