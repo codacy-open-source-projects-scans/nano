@@ -82,23 +82,27 @@ static size_t macro_length = 0;
 static size_t milestone = 0;
 		/* Where the last burst of recorded keystrokes started. */
 
-/* Add the given code to the macro buffer. */
-void add_to_macrobuffer(int code)
-{
-	macro_length++;
-	macro_buffer = nrealloc(macro_buffer, macro_length * sizeof(int));
-	macro_buffer[macro_length - 1] = code;
-}
-
 /* Start or stop the recording of keystrokes. */
 void record_macro(void)
 {
+	static int *previous_macro = NULL;
+	static size_t previous_length;
+
 	recording = !recording;
 
 	if (recording) {
+		previous_macro = macro_buffer;
+		previous_length = macro_length;
+		macro_buffer = NULL;
 		macro_length = 0;
 		statusline(REMARK, _("Recording a macro..."));
+	} else if (milestone == 0) {
+		free(macro_buffer);
+		macro_buffer = previous_macro;
+		macro_length = previous_length;
+		statusline(REMARK, _("Cancelled"));
 	} else {
+		free(previous_macro);
 		/* Snip the keystroke that invoked this function. */
 		macro_length = milestone;
 		statusline(REMARK, _("Stopped recording"));
@@ -106,6 +110,14 @@ void record_macro(void)
 
 	if (ISSET(STATEFLAGS))
 		titlebar(NULL);
+}
+
+/* Add the given code to the macro buffer. */
+void add_to_macrobuffer(int code)
+{
+	macro_length++;
+	macro_buffer = nrealloc(macro_buffer, macro_length * sizeof(int));
+	macro_buffer[macro_length - 1] = code;
 }
 
 /* Copy the stored sequence of codes into the regular key buffer,
