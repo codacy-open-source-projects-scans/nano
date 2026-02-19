@@ -1674,18 +1674,6 @@ void process_a_keystroke(void)
 	} else if (meta_key)
 		give_a_hint = FALSE;
 
-	/* When not cutting or copying text, drop the cutbuffer the next time. */
-	if (function != cut_text && function != copy_text) {
-#ifndef NANO_TINY
-		if (function != zap_text)
-#endif
-			keep_cutbuffer = FALSE;
-	}
-
-#ifdef ENABLE_WORDCOMPLETION
-	if (function != complete_a_word)
-		pletion_line = NULL;
-#endif
 #ifdef ENABLE_NANORC
 	if (function == (functionptrtype)implant) {
 		implant(shortcut->expansion);
@@ -1699,7 +1687,21 @@ void process_a_keystroke(void)
 			keep_cutbuffer = FALSE;
 		return;
 	}
+#endif
 
+	/* When not cutting or copying text, drop the cutbuffer the next time. */
+	if (function != cut_text && function != copy_text) {
+#ifndef NANO_TINY
+		if (function != zap_text && function != record_macro && function != run_macro)
+#endif
+			keep_cutbuffer = FALSE;
+	}
+
+#ifdef ENABLE_WORDCOMPLETION
+	if (function != complete_a_word)
+		pletion_line = NULL;
+#endif
+#ifndef NANO_TINY
 	linestruct *was_current = openfile->current;
 	size_t was_x = openfile->current_x;
 
