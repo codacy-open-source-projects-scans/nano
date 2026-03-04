@@ -87,7 +87,6 @@ static const rcoption rcopts[] = {
 	{"rebinddelete", REBIND_DELETE},
 	{"regexp", USE_REGEXP},
 	{"saveonexit", SAVE_ON_EXIT},
-	{"solosidescroll", SOLO_SIDESCROLL},
 #ifdef ENABLE_SPELLER
 	{"speller", 0},
 #endif
@@ -112,6 +111,7 @@ static const rcoption rcopts[] = {
 	{"showcursor", SHOW_CURSOR},
 	{"smarthome", SMART_HOME},
 	{"softwrap", SOFTWRAP},
+	{"solosidescroll", SOLO_SIDESCROLL},
 	{"stateflags", STATEFLAGS},
 	{"tabsize", 0},
 	{"tabstospaces", TABS_TO_SPACES},

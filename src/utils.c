@@ -343,6 +343,7 @@ char *free_and_assign(char *dest, char *src)
  * displayed in the edit window when the cursor is at the given column. */
 size_t get_page_start(size_t column)
 {
+#ifndef NANO_TINY
 	if (united_sidescroll) {
 		if (column < CUSHION)
 			return 0;
@@ -356,6 +357,7 @@ size_t get_page_start(size_t column)
 		else
 			return openfile->brink;
 	}
+#endif
 
 	if (column == 0 || column + 2 < editwincols || ISSET(SOFTWRAP))
 		return 0;

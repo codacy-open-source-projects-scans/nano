@@ -652,9 +652,9 @@ void usage(void)
 	print_opt("-%", "--stateflags", N_("Show some states on the title bar"));
 	print_opt("-_", "--minibar", N_("Show a feedback bar at the bottom"));
 	print_opt("-0", "--zero", N_("Hide all bars, use whole terminal"));
+	print_opt("-1", "--solosidescroll", N_("Scroll only the current line sideways"));
 #endif
 	print_opt("-/", "--modernbindings", N_("Use better-known key bindings"));
-	print_opt("-1", "--solosidescroll", N_("Scroll only the current line sideways"));
 }
 
 /* Display the version number of this nano, a copyright notice, some contact
@@ -1552,11 +1552,11 @@ void inject(char *burst, size_t count)
 
 	openfile->placewewant = xplustabs();
 
+#ifndef NANO_TINY
 	/* When panning, and we have come near the edge of the viewport... */
 	if (united_sidescroll && openfile->placewewant > openfile->brink + editwincols - CUSHION - 1 )
 		refresh_needed = TRUE;
 
-#ifndef NANO_TINY
 	/* When softwrapping and the number of chunks in the current line changed,
 	 * or we were on the last row of the edit window and moved to a new chunk,
 	 * we need a full refresh. */
@@ -1812,7 +1812,6 @@ int main(int argc, char **argv)
 		{"listsyntaxes", 0, NULL, 'z'},
 #endif
 		{"modernbindings", 0, NULL, '/'},
-		{"solosidescroll", 0, NULL, '1'},
 #ifndef NANO_TINY
 		{"smarthome", 0, NULL, 'A'},
 		{"backup", 0, NULL, 'B'},
@@ -1844,6 +1843,7 @@ int main(int argc, char **argv)
 		{"stateflags", 0, NULL, '%'},
 		{"minibar", 0, NULL, '_'},
 		{"zero", 0, NULL, '0'},
+		{"solosidescroll", 0, NULL, '1'},
 #endif
 #ifdef HAVE_LIBMAGIC
 		{"magic", 0, NULL, '!'},
@@ -2689,6 +2689,7 @@ int main(int argc, char **argv)
 		if (currmenu != MMAIN)
 			bottombars(MMAIN);
 
+#ifndef NANO_TINY
 		/* Do sideways scrolling only when the user didn't switch it off,
 		 * when not softwrapping, and the window is wide enough. */
 		if (united_sidescroll != (!ISSET(SOLO_SIDESCROLL) && !ISSET(SOFTWRAP) &&
@@ -2697,7 +2698,6 @@ int main(int argc, char **argv)
 			refresh_needed = TRUE;
 		}
 
-#ifndef NANO_TINY
 		if (ISSET(MINIBAR) && !ISSET(ZERO) && LINES > 1 && lastmessage < REMARK)
 			minibar();
 		else
