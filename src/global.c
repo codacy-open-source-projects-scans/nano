@@ -385,6 +385,14 @@ int keycode_from_string(const char *keystring)
 		}
 		if (strcasecmp(keystring, "M-Space") == 0)
 			return (int)' ';
+		else if (strcasecmp(keystring, "M-Left") == 0)
+			return ALT_LEFT;
+		else if (strcasecmp(keystring, "M-Right") == 0)
+			return ALT_RIGHT;
+		else if (strcasecmp(keystring, "M-Up") == 0)
+			return ALT_UP;
+		else if (strcasecmp(keystring, "M-Down") == 0)
+			return ALT_DOWN;
 		else
 			return -1;
 #ifdef ENABLE_NANORC
@@ -629,6 +637,10 @@ void shortcut_init(void)
 	const char *nextpage_gist = N_("Go one screenful down");
 	const char *firstline_gist = N_("Go to the first line of the file");
 	const char *lastline_gist = N_("Go to the last line of the file");
+#ifndef NANO_TINY
+	const char *scrollleft_gist = N_("Scroll the viewport a tabsize to the left");
+	const char *scrollright_gist = N_("Scroll the viewport a tabsize to the right");
+#endif
 #if !defined(NANO_TINY) || defined(ENABLE_HELP)
 	const char *scrollup_gist =
 		N_("Scroll up one line without moving the cursor textually");
@@ -948,10 +960,17 @@ void shortcut_init(void)
 			/* TRANSLATORS: Try to keep the next two strings at most 10 characters. */
 			N_("Prev Line"), WHENHELP(prevline_gist), TOGETHER);
 	add_to_funcs(do_down, MMAIN|MBROWSER|MHELP,
-			N_("Next Line"), WHENHELP(nextline_gist), TOGETHER);
+			N_("Next Line"), WHENHELP(nextline_gist), BLANKAFTER);
+
+#ifndef NANO_TINY
+	add_to_funcs(do_scroll_left, MMAIN,
+			/* TRANSLATORS: Try to keep the next six strings at most 12 characters. */
+			N_("Scroll Left"), WHENHELP(scrollleft_gist), TOGETHER);
+	add_to_funcs(do_scroll_right, MMAIN,
+			N_("Scroll Right"), WHENHELP(scrollright_gist), TOGETHER);
+#endif
 #if !defined(NANO_TINY) || defined(ENABLE_HELP)
 	add_to_funcs(do_scroll_up, MMAIN,
-			/* TRANSLATORS: Try to keep the next four strings at most 12 characters. */
 			N_("Scroll Up"), WHENHELP(scrollup_gist), TOGETHER);
 	add_to_funcs(do_scroll_down, MMAIN,
 			N_("Scroll Down"), WHENHELP(scrolldown_gist), BLANKAFTER);
@@ -1431,9 +1450,7 @@ void shortcut_init(void)
 #endif
 #ifdef ENABLE_MULTIBUFFER
 	add_to_sclist(MMAIN, "M-,", 0, switch_to_prev_buffer, 0);
-	add_to_sclist(MMAIN, "M-<", 0, switch_to_prev_buffer, 0);
 	add_to_sclist(MMAIN, "M-.", 0, switch_to_next_buffer, 0);
-	add_to_sclist(MMAIN, "M->", 0, switch_to_next_buffer, 0);
 #endif
 	add_to_sclist(MMOST, "M-V", 0, do_verbatim_input, 0);
 #ifndef NANO_TINY
@@ -1450,6 +1467,8 @@ void shortcut_init(void)
 	add_to_sclist(MEXECUTE, "^J", 0, do_full_justify, 0);
 #endif
 #ifndef NANO_TINY
+	add_to_sclist(MMAIN, "M-<", 0, do_scroll_left, 0);
+	add_to_sclist(MMAIN, "M->", 0, do_scroll_right, 0);
 	add_to_sclist(MMAIN, "^L", 0, do_center, 0);
 	add_to_sclist(MMAIN, "M-%", 0, do_cycle, 0);
 	add_to_sclist((MMOST|MBROWSER|MHELP|MYESNO)&~MMAIN, "^L", 0, full_refresh, 0);
