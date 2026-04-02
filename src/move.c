@@ -704,7 +704,7 @@ void do_scroll_left(void)
 		return;
 	}
 
-	openfile->brink -= (openfile->brink < tabsize) ? openfile->brink : tabsize;
+	openfile->brink -= (openfile->brink < tabsize) ? openfile->brink : (tabsize < 2) ? 2 : tabsize;
 
 	frame_x = actual_x(openfile->current->data, openfile->brink + editwincols - CUSHION - 1);
 
@@ -728,10 +728,12 @@ void do_scroll_right(void)
 		return;
 	}
 
-	openfile->brink += tabsize;
+	openfile->brink += (tabsize < 2) ? 2 : tabsize;
 
-	/* If the current line does not allow further scrolling,
-	 * seek a later line in the viewport that does allow it. */
+	/* If the current line does not allow further scrolling, seek
+	 * in the viewport an earlier or later line that does allow it. */
+	while (line != openfile->edittop && breadth(line->data) < openfile->brink + CUSHION)
+		line = line->prev;
 	while (line->lineno < sill && breadth(line->data) < openfile->brink + CUSHION && line->next)
 		line = line->next;
 	if (line->lineno < sill && breadth(line->data) >= openfile->brink + CUSHION)
