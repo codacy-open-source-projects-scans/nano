@@ -2,7 +2,7 @@
 # Generate configure & friends for GIT users.
 
 gnulib_url="git://git.sv.gnu.org/gnulib.git"
-gnulib_hash="b75134c814c38876f04029ffc3fae4e90035dc34"
+gnulib_hash="d89ea630c1318a1a595aa3aff169586f4e626274"
 
 modules="
 	canonicalize-lgpl
@@ -17,6 +17,7 @@ modules="
 	mkstemps
 	nl_langinfo
 	regex
+	rewinddir
 	sigaction
 	snprintf-posix
 	stdarg-h
@@ -28,6 +29,7 @@ modules="
 	wchar-h
 	wctype-h
 	wcwidth
+	windows-stat-timespec
 "
 
 # Make sure the local gnulib git repo is up-to-date.

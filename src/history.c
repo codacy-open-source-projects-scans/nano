@@ -114,29 +114,30 @@ void update_history(linestruct **item, const char *text, bool avoid_duplicates)
 
 	/* If an identical string was found, delete that item. */
 	if (thesame) {
-		linestruct *after = thesame->next;
-
-		/* If the string is at the head of the list, move the head. */
 		if (thesame == *htop)
-			*htop = after;
+			*htop = thesame->next;
+		else
+			thesame->prev->next = thesame->next;
+		thesame->next->prev = thesame->prev;
 
-		unlink_node(thesame);
-		renumber_from(after);
+		free(thesame->data);
+		free(thesame);
+		(*hbot)->lineno--;
 	}
 
 	/* If the history is full, delete the oldest item (the one at the
 	 * head of the list), to make room for a new item at the end. */
-	if ((*hbot)->lineno == MAX_SEARCH_HISTORY + 1) {
-		linestruct *oldest = *htop;
-
+	if ((*hbot)->lineno > MAX_SEARCH_HISTORY) {
 		*htop = (*htop)->next;
-		unlink_node(oldest);
-		renumber_from(*htop);
+		free((*htop)->prev->data);
+		free((*htop)->prev);
+		(*htop)->prev = NULL;
+		(*hbot)->lineno--;
 	}
 
 	/* Store the fresh string in the last item, then create a new item. */
 	(*hbot)->data = mallocstrcpy((*hbot)->data, text);
-	splice_node(*hbot, make_new_node(*hbot));
+	(*hbot)->next = make_new_node(*hbot);
 	*hbot = (*hbot)->next;
 	(*hbot)->data = copy_of("");
 
@@ -172,7 +173,7 @@ char *get_history_completion(linestruct **here, char *string, size_t len)
 	 * for a match of len characters.  Skip over an exact match. */
 	item = find_in_history((*here)->prev, htop, string, len);
 
-	while (item != NULL && strcmp(item->data, string) == 0)
+	while (item && strcmp(item->data, string) == 0)
 		item = find_in_history(item->prev, htop, string, len);
 
 	if (item) {
@@ -183,7 +184,7 @@ char *get_history_completion(linestruct **here, char *string, size_t len)
 	/* Now search from the bottom of the list to the original position. */
 	item = find_in_history(hbot, *here, string, len);
 
-	while (item != NULL && strcmp(item->data, string) == 0)
+	while (item && strcmp(item->data, string) == 0)
 		item = find_in_history(item->prev, *here, string, len);
 
 	if (item) {
@@ -204,7 +205,7 @@ bool have_statedir(void)
 
 	get_homedir();
 
-	if (homedir != NULL) {
+	if (homedir) {
 		statedir = concatenate(homedir, "/.nano/");
 
 		if (stat(statedir, &dirinfo) == 0 && S_ISDIR(dirinfo.st_mode)) {
@@ -219,12 +220,12 @@ bool have_statedir(void)
 	if (homedir == NULL && xdgdatadir == NULL)
 		return FALSE;
 
-	if (xdgdatadir != NULL)
+	if (xdgdatadir)
 		statedir = concatenate(xdgdatadir, "/nano/");
 	else
 		statedir = concatenate(homedir, "/.local/share/nano/");
 
-	if (stat(statedir, &dirinfo) == -1) {
+	if (stat(statedir, &dirinfo) < 0) {
 		if (xdgdatadir == NULL) {
 			char *statepath = concatenate(homedir, "/.local");
 			mkdir(statepath, S_IRWXU);
@@ -233,7 +234,7 @@ bool have_statedir(void)
 			mkdir(statepath, S_IRWXU);
 			free(statepath);
 		}
-		if (mkdir(statedir, S_IRWXU) == -1) {
+		if (mkdir(statedir, S_IRWXU) < 0) {
 			jot_error(N_("Unable to create directory %s: %s\n"
 								"It is required for saving/loading "
 								"search history or cursor positions.\n"),
@@ -376,6 +377,7 @@ void restore_anchors(char *string)
 			return;
 		*space = '\0';
 		number = atoi(string);
+		*space = ' ';
 		string = space + 1;
 
 		while (line->lineno < number)
@@ -511,7 +513,7 @@ void reload_positions_if_needed(void)
 	positionstruct *item, *nextone;
 	struct stat fileinfo;
 
-	if (stat(registername, &fileinfo) != 0 || fileinfo.st_mtime == latest_timestamp)
+	if (stat(registername, &fileinfo) < 0 || fileinfo.st_mtime == latest_timestamp)
 		return;
 
 	for (item = positions_register; item != NULL; item = nextone) {
@@ -584,7 +586,7 @@ void restore_cursor_position_if_any(void)
 	reload_positions_if_needed();
 
 	item = positions_register;
-	while (item != NULL && strcmp(item->filename, fullpath) != 0)
+	while (item && strcmp(item->filename, fullpath) != 0)
 		item = item->next;
 
 	free(fullpath);

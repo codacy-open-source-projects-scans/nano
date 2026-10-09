@@ -37,11 +37,6 @@
 #define BRANDING  PACKAGE_STRING
 #endif
 
-/* When having an older ncurses, then most likely libvte is older too. */
-#if defined(NCURSES_VERSION_PATCH) && (NCURSES_VERSION_PATCH < 20200212)
-#define USING_OLDER_LIBVTE  yes
-#endif
-
 static int *key_buffer = NULL;
 		/* A buffer for the keystrokes that haven't been handled yet. */
 static int *nextcodes = NULL;
@@ -371,7 +366,7 @@ int get_code_from_plantation(void)
 			if (plants_pointer[2] != '}')
 				return MISSING_BRACE;
 			plants_pointer += 3;
-			if (*plants_pointer != '\0')
+			if (*plants_pointer)
 				put_back(MORE_PLANTS);
 			return *(plants_pointer - 2);
 		}
@@ -387,7 +382,7 @@ int get_code_from_plantation(void)
 
 		plants_pointer = closing + 1;
 
-		if (*plants_pointer != '\0')
+		if (*plants_pointer)
 			put_back(MORE_PLANTS);
 
 		return PLANTED_A_COMMAND;
@@ -1048,24 +1043,19 @@ int parse_kbinput(WINDOW *frame)
 			if (keycode == '\t')
 				return SHIFT_TAB;
 #ifndef NANO_TINY
-			else if (keycode == KEY_BACKSPACE || keycode == '\b' ||
-												keycode == DEL_CODE)
+			else if (keycode == KEY_BACKSPACE || keycode == '\b' || keycode == DEL_CODE)
 				return CONTROL_SHIFT_DELETE;
 #endif
-#ifdef ENABLE_UTF8
-			else if (0xC0 <= keycode && keycode <= 0xFF && using_utf8) {
-				while (waiting_codes && 0x80 <= nextcodes[0] && nextcodes[0] <= 0xBF)
-					get_input(NULL);
-				return FOREIGN_SEQUENCE;
-			}
-#endif
-			else if (keycode < 0x20 && !last_escape_was_alone)
+			else if (keycode < 0x20 && !last_escape_was_alone) {
 				meta_key = TRUE;
+				return keycode;
+			}
 		} else if (waiting_codes == 0 || nextcodes[0] == ESC_CODE ||
 								(keycode != 'O' && keycode != '[')) {
 			if ('A' <= keycode && keycode <= 'Z' && !shifted_metas)
 				keycode |= 0x20;
 			meta_key = TRUE;
+			return keycode;
 		} else
 			keycode = parse_escape_sequence(keycode);
 	} else {
@@ -1266,10 +1256,6 @@ int parse_kbinput(WINDOW *frame)
 	}
 #endif /* __linux__ */
 
-	/* Spurious codes from VTE -- see https://sv.gnu.org/bugs/?64578. */
-	if (keycode == mousefocusin || keycode == mousefocusout)
-		return ERR;
-
 	switch (keycode) {
 		case KEY_SLEFT:
 			shift_held = TRUE;
@@ -1363,6 +1349,17 @@ int parse_kbinput(WINDOW *frame)
 		case KEY_FRESH:
 #endif
 			return ERR;    /* Ignore this keystroke. */
+
+		default:
+#if (NCURSES_VERSION_PATCH > 20230506) && (NCURSES_VERSION_PATCH < 20231028)
+			/* Two spurious codes -- see https://sv.gnu.org/bugs/?64578. */
+			if (keycode == mousefocusin)   return ERR;
+			if (keycode == mousefocusout)  return ERR;
+#endif
+			if (keycode == operatorslash)  return '/';
+			if (keycode == operatorstar)   return '*';
+			if (keycode == operatorminus)  return '-';
+			if (keycode == operatorplus)   return '+';
 	}
 
 	return keycode;
@@ -1804,14 +1801,14 @@ char *display_string(const char *text, size_t column, size_t span,
 #ifndef NANO_TINY
 	if (span > HIGHEST_POSITIVE) {
 		statusline(ALERT, "Span has underflowed -- please report a bug");
-		converted[0] = '\0';
+		*converted = '\0';
 		return converted;
 	}
 #endif
 	/* If the first character starts before the left edge, or would be
 	 * overwritten by a "<" token, then show placeholders instead. */
 	if ((start_col < column || (start_col > 0 && isdata && !ISSET(SOFTWRAP))) &&
-											*text != '\0' && *text != '\t') {
+											*text && *text != '\t') {
 		if (is_cntrl_char(text)) {
 			if (start_col < column) {
 				converted[index++] = control_mbrep(text, isdata);
@@ -1842,7 +1839,7 @@ char *display_string(const char *text, size_t column, size_t span,
 #define ZEROWIDTH_CHAR  FALSE
 #endif
 
-	while (*text != '\0' && (column < beyond || ZEROWIDTH_CHAR)) {
+	while (*text && (column < beyond || ZEROWIDTH_CHAR)) {
 		/* A plain printable ASCII character is one byte, one column. */
 		if (((signed char)*text > 0x20 && *text != DEL_CODE) || ISO8859_CHAR) {
 			converted[index++] = *(text++);
@@ -1867,9 +1864,8 @@ char *display_string(const char *text, size_t column, size_t span,
 		/* Show a tab as a visible character plus spaces, or as just spaces. */
 		if (*text == '\t') {
 #ifndef NANO_TINY
-			if (ISSET(WHITESPACE_DISPLAY) && (index > 0 || !isdata ||
-						!ISSET(SOFTWRAP) || column % tabsize == 0 ||
-						column == start_col)) {
+			if (ISSET(WHITESPACE_DISPLAY) && (index > 0 || !isdata || !ISSET(SOFTWRAP) ||
+										column % tabsize == 0 || column == start_col)) {
 				for (int i = 0; i < whitelen[0];)
 					converted[index++] = whitespace[i++];
 			} else
@@ -1939,8 +1935,7 @@ char *display_string(const char *text, size_t column, size_t span,
 	}
 
 	/* If there is more text than can be shown, make room for the ">". */
-	if (column > beyond || (*text != '\0' && (isprompt ||
-							(isdata && !ISSET(SOFTWRAP))))) {
+	if (column > beyond || (*text && (isprompt || (isdata && !ISSET(SOFTWRAP))))) {
 #ifdef ENABLE_UTF8
 		do {
 			index = step_left(converted, index);
@@ -2042,7 +2037,7 @@ void titlebar(const char *path)
 	} else
 #endif
 #ifdef ENABLE_BROWSER
-	if (!inhelp && path != NULL)
+	if (!inhelp && path)
 		prefix = _("DIR:");
 	else
 #endif
@@ -2051,8 +2046,7 @@ void titlebar(const char *path)
 		/* If there are/were multiple buffers, show which out of how many. */
 		if (more_than_one) {
 			ranking = nmalloc(24);
-			sprintf(ranking, "[%i/%i]", buffer_number(openfile),
-										buffer_number(startfile->prev));
+			sprintf(ranking, "[%i/%i]", buffer_number(openfile), buffer_number(startfile->prev));
 			upperleft = ranking;
 		} else
 #endif
@@ -2106,8 +2100,7 @@ void titlebar(const char *path)
 
 	/* If we have side spaces left, center the path name. */
 	if (verlen > 0)
-		offset = verlen + (COLS - (verlen + pluglen + statelen) -
-										(prefixlen + pathlen)) / 2;
+		offset = verlen + (COLS - (verlen + pluglen + statelen) - (prefixlen + pathlen)) / 2;
 
 	/* Only print the prefix when there is room for it. */
 	if (verlen + prefixlen + pathlen + pluglen + statelen <= COLS) {
@@ -2159,30 +2152,20 @@ void titlebar(const char *path)
 /* Draw a bar at the bottom with some minimal state information. */
 void minibar(void)
 {
-	char *thename = NULL, *number_of_lines = NULL, *ranking = NULL;
+	char *thename = NULL;
 	char *location = nmalloc(44);
-	char *hexadecimal = nmalloc(9);
 	char *successor = NULL;
 	size_t namewidth, placewidth;
 	size_t tallywidth = 0;
 	size_t padding = 2;
-#ifdef ENABLE_UTF8
-	wchar_t widecode;
-#endif
 
 	/* Draw a colored bar over the full width of the screen. */
 	wattron(footwin, interface_color_pair[MINI_INFOBAR]);
 	mvwprintw(footwin, 0, 0, "%*s", COLS, " ");
 
-	if (openfile->filename[0] != '\0') {
-		as_an_at = FALSE;
-		thename = display_string(openfile->filename, 0, COLS, FALSE, FALSE);
-	} else
-		thename = copy_of(_("(nameless)"));
-
-	sprintf(location, "%zi,%zi", openfile->current->lineno, xplustabs() + 1);
-	placewidth = strlen(location);
+	thename = copy_of(*openfile->filename ? openfile->filename : _("(nameless)"));
 	namewidth = breadth(thename);
+	as_an_at = FALSE;
 
 	/* If the file name is relatively long, drop the side spaces. */
 	if (namewidth + 19 > COLS)
@@ -2191,24 +2174,28 @@ void minibar(void)
 	/* Display the name of the current file (dottifying it if it doesn't fit),
 	 * plus a star when the file has been modified. */
 	if (COLS > 4) {
-		if (namewidth > COLS - 2) {
-			char *shortname = display_string(thename, namewidth - COLS + 5,
-												COLS - 5, FALSE, FALSE);
-			mvwaddstr(footwin, 0, 0, "...");
-			waddstr(footwin, shortname);
-			free(shortname);
-		} else
-			mvwaddstr(footwin, 0, padding, thename);
+		char *stagename;
 
+		wmove(footwin, 0, padding);
+		if (namewidth > COLS - 2) {
+			waddstr(footwin, "...");
+			stagename = display_string(thename, namewidth - COLS + 5, COLS - 5, FALSE, FALSE);
+		} else
+			stagename = display_string(thename, 0, COLS - 2, FALSE, FALSE);
+		waddstr(footwin, stagename);
 		waddstr(footwin, openfile->modified ? " *" : "  ");
+		free(stagename);
 	}
+
+	sprintf(location, "%zi,%zi", openfile->current->lineno, xplustabs() + 1);
+	placewidth = strlen(location);
 
 	/* Right after reading or writing a file, display its number of lines;
 	 * otherwise, when there are multiple buffers, display an [x/n] counter. */
 	if (report_size && COLS > 35) {
 		size_t count = openfile->filebot->lineno - (openfile->filebot->data[0] == '\0');
+		char *number_of_lines = nmalloc(64);
 
-		number_of_lines = nmalloc(49);
 		if (openfile->fmt == NIX_FILE || openfile->fmt == UNSPECIFIED)
 			sprintf(number_of_lines, P_(" (%zu line)", " (%zu lines)", count), count);
 		else
@@ -2219,14 +2206,17 @@ void minibar(void)
 			waddstr(footwin, number_of_lines);
 		else
 			tallywidth = 0;
+		free(number_of_lines);
 		report_size = FALSE;
 	}
 #ifdef ENABLE_MULTIBUFFER
 	else if (openfile->next != openfile && COLS > 35) {
-		ranking = nmalloc(24);
+		char *ranking = nmalloc(24);
+
 		sprintf(ranking, " [%i/%i]", buffer_number(openfile), buffer_number(startfile->prev));
 		if (namewidth + placewidth + breadth(ranking) + 32 < COLS)
 			waddstr(footwin, ranking);
+		free(ranking);
 	}
 #endif
 
@@ -2238,6 +2228,10 @@ void minibar(void)
 	 * plus the codes of up to two succeeding zero-width characters. */
 	if (ISSET(CONSTANT_SHOW) && namewidth + tallywidth + 28 < COLS) {
 		char *this_position = openfile->current->data + openfile->current_x;
+		char *hexadecimal = nmalloc(9);
+#ifdef ENABLE_UTF8
+		wchar_t widecode;
+#endif
 
 		if (*this_position == '\0')
 			sprintf(hexadecimal, openfile->current->next ?
@@ -2245,7 +2239,7 @@ void minibar(void)
 		else if (*this_position == '\n')
 			sprintf(hexadecimal, "  0x00");
 #ifdef ENABLE_UTF8
-		else if ((unsigned char)*this_position < 0x80 && using_utf8)
+		else if (using_utf8 && (unsigned char)*this_position < 0x80)
 			sprintf(hexadecimal, "U+%04X", (unsigned char)*this_position);
 		else if (using_utf8 && mbtowide(&widecode, this_position) > 0)
 			sprintf(hexadecimal, "U+%04X", (int)widecode);
@@ -2256,22 +2250,24 @@ void minibar(void)
 		mvwaddstr(footwin, 0, COLS - 23, hexadecimal);
 
 #ifdef ENABLE_UTF8
-		successor = this_position + char_length(this_position);
-
-		if (*this_position && *successor && is_zerowidth(successor) &&
-								mbtowide(&widecode, successor) > 0) {
-			sprintf(hexadecimal, "|%04X", (int)widecode);
-			waddstr(footwin, hexadecimal);
-
-			successor += char_length(successor);
+		if (using_utf8 && *this_position) {
+			successor = this_position + char_length(this_position);
 
 			if (is_zerowidth(successor) && mbtowide(&widecode, successor) > 0) {
 				sprintf(hexadecimal, "|%04X", (int)widecode);
 				waddstr(footwin, hexadecimal);
-			}
-		} else
-			successor = NULL;
+
+				successor += char_length(successor);
+
+				if (is_zerowidth(successor) && mbtowide(&widecode, successor) > 0) {
+					sprintf(hexadecimal, "|%04X", (int)widecode);
+					waddstr(footwin, hexadecimal);
+				}
+			} else
+				successor = NULL;
+		}
 #endif
+		free(hexadecimal);
 	}
 
 	/* Display the state of three flags, and the state of macro and mark. */
@@ -2293,11 +2289,8 @@ void minibar(void)
 	wattroff(footwin, interface_color_pair[MINI_INFOBAR]);
 	wrefresh(footwin);
 
-	free(number_of_lines);
-	free(hexadecimal);
 	free(location);
 	free(thename);
-	free(ranking);
 }
 #endif /* NANO_TINY */
 
@@ -2393,12 +2386,6 @@ void statusline(message_type importance, const char *msg, ...)
 	if (bracketed)
 		waddstr(footwin, " ]");
 	wattroff(footwin, colorpair);
-
-#ifdef USING_OLDER_LIBVTE
-	/* Defeat a VTE/Konsole bug, where the cursor can go off-limits. */
-	if (ISSET(CONSTANT_SHOW) && ISSET(NO_HELP))
-		wmove(footwin, 0, 0);
-#endif
 
 	/* Push the message to the screen straightaway. */
 	wrefresh(footwin);
@@ -2518,7 +2505,7 @@ void place_the_cursor(void)
 		row -= chunk_for(openfile->firstcolumn, openfile->edittop);
 
 		/* Calculate how many rows the lines from edittop to current use. */
-		while (line != NULL && line != openfile->current) {
+		while (line && line != openfile->current) {
 			row += 1 + extra_chunks_in(line);
 			line = line->next;
 		}
@@ -2757,21 +2744,9 @@ void draw_row(int row, const char *converted, linestruct *line, size_t from_col)
 		char striped_char[MAXCHARLEN];
 		size_t charlen = 1;
 
-		if (*(converted + target_x) != '\0') {
+		if (*(converted + target_x)) {
 			charlen = collect_char(converted + target_x, striped_char);
 			target_column = wideness(converted, target_x);
-#ifdef USING_OLDER_LIBVTE
-		} else if (target_column + 1 == editwincols) {
-			/* Defeat a VTE bug -- see https://sv.gnu.org/bugs/?55896. */
-#ifdef ENABLE_UTF8
-			if (using_utf8) {
-				striped_char[0] = '\xC2';
-				striped_char[1] = '\xA0';
-				charlen = 2;
-			} else
-#endif
-				striped_char[0] = '.';
-#endif
 		} else
 			striped_char[0] = ' ';
 
@@ -2857,7 +2832,7 @@ int update_line(linestruct *line, size_t index)
 	converted = display_string(line->data, from_col, editwincols, TRUE, FALSE);
 	draw_row(row, converted, line, from_col);
 
-	if (from_col > 0 && *converted != '\0') {
+	if (from_col > 0 && *converted) {
 		wattron(midwin, hilite_attribute);
 		mvwaddch(midwin, row, margin, '<');
 		wattroff(midwin, hilite_attribute);
@@ -2904,7 +2879,7 @@ int update_softwrapped_line(linestruct *line)
 		row -= chunk_for(openfile->firstcolumn, openfile->edittop);
 
 	/* Find out on which screen row the target line should be shown. */
-	while (someline != line && someline != NULL) {
+	while (someline != line && someline) {
 		row += 1 + extra_chunks_in(someline);
 		someline = someline->next;
 	}
@@ -2921,8 +2896,7 @@ int update_softwrapped_line(linestruct *line)
 		sequel_column = (end_of_line) ? 0 : to_col;
 
 		/* Convert the chunk to its displayable form and draw it. */
-		converted = display_string(line->data, from_col, to_col - from_col,
-									TRUE, FALSE);
+		converted = display_string(line->data, from_col, to_col - from_col, TRUE, FALSE);
 		draw_row(row++, converted, line, from_col);
 		free(converted);
 
@@ -2941,13 +2915,12 @@ int update_softwrapped_line(linestruct *line)
  * that the relevant line needs to be redrawn. */
 bool line_needs_update(const size_t old_column, const size_t new_column)
 {
-#ifndef NANO_TINY
-	if (openfile->mark)
-		return TRUE;
-#endif
 	if (get_page_start(old_column) == get_page_start(new_column))
+#ifdef NANO_TINY
 		return FALSE;
-#ifndef NANO_TINY
+#else
+		return (openfile->mark != NULL);
+
 	if (united_sidescroll)
 		refresh_needed = TRUE;
 #endif
@@ -3133,9 +3106,8 @@ void edit_scroll(bool direction)
 
 	/* Draw new content on the blank row (and on the bordering row too
 	 * when it was deemed necessary). */
-	while (nrows > 0 && line != NULL) {
-		nrows -= update_line(line, (line == openfile->current) ?
-										openfile->current_x : 0);
+	while (nrows > 0 && line) {
+		nrows -= update_line(line, (line == openfile->current) ? openfile->current_x : 0);
 		line = line->next;
 	}
 }
@@ -3170,11 +3142,11 @@ size_t get_softwrap_breakpoint(const char *linedata, size_t leftedge,
 	}
 
 	/* First find the place in text where the current chunk starts. */
-	while (*text != '\0' && column < leftedge)
+	while (*text && column < leftedge)
 		text += advance_over(text, &column);
 
 	/* Now find the place in text where this chunk should end. */
-	while (*text != '\0' && column <= rightside) {
+	while (*text && column <= rightside) {
 		/* When breaking at blanks, do it *before* the target column. */
 		if (ISSET(AT_BLANKS) && is_blank_char(text) && column < rightside) {
 			farthest_blank = text;
@@ -3194,7 +3166,7 @@ size_t get_softwrap_breakpoint(const char *linedata, size_t leftedge,
 
 	/* If we're softwrapping at blanks and we found at least one blank, break
 	 * after that blank -- if it doesn't overshoot the screen's edge. */
-	if (farthest_blank != NULL) {
+	if (farthest_blank) {
 		size_t aftertheblank = last_blank_col;
 		size_t onestep = advance_over(farthest_blank, &aftertheblank);
 
@@ -3229,7 +3201,7 @@ size_t get_chunk_and_edge(size_t column, linestruct *line, size_t *leftedge)
 
 		/* When the column is in range or we reached end-of-line, we're done. */
 		if (end_of_line || (start_col <= column && column < end_col)) {
-			if (leftedge != NULL)
+			if (leftedge)
 				*leftedge = start_col;
 			return current_chunk;
 		}
@@ -3269,8 +3241,7 @@ size_t leftedge_for(size_t column, linestruct *line)
 void ensure_firstcolumn_is_aligned(void)
 {
 	if (ISSET(SOFTWRAP))
-		openfile->firstcolumn = leftedge_for(openfile->firstcolumn,
-														openfile->edittop);
+		openfile->firstcolumn = leftedge_for(openfile->firstcolumn, openfile->edittop);
 	else
 		openfile->firstcolumn = 0;
 
@@ -3375,8 +3346,7 @@ void edit_redraw(linestruct *old_current, update_type manner)
 		while (line != openfile->current) {
 			update_line(line, 0);
 
-			line = (line->lineno > openfile->current->lineno) ?
-						line->prev : line->next;
+			line = (line->lineno > openfile->current->lineno) ? line->prev : line->next;
 		}
 	} else
 #endif
@@ -3437,7 +3407,7 @@ void edit_refresh(void)
 
 	line = openfile->edittop;
 
-	while (row < editwinrows && line != NULL) {
+	while (row < editwinrows && line) {
 		row += update_line(line, (line == openfile->current) ? openfile->current_x : 0);
 		line = line->next;
 	}
